@@ -11,6 +11,7 @@ License:
 class Auction {
 
     const DOMAIN = 'auction';
+    const CUSTOM_POST_TYPE = 'auction';
 
     const LOGIN_PAGE = 'login-page';
     const SIGNUP_PAGE = 'signup-page';
@@ -59,10 +60,12 @@ class Auction {
 
     public function register_widgets() {
         register_widget('SearchWidget');
+        register_widget('NewestWidget');
     }
 
     private function load_dependencies() {
         require('widgets/searchwidget.php');
+        require('widgets/newestwidget.php');
         require('custom-post-type.php');
     }
 
@@ -96,30 +99,35 @@ class Auction {
                         'title' => __('Page for log in', self::DOMAIN),
                         'type' => 'select',
                         'list' => $pages,
-                        'precond' => array(array(
+                        /*'precond' => array(array(
                             'cond' => (get_option('permalink_structure') != ''),
-                            'message' => __('Permalinks must be enabled for program listings search to work properly', self::DOMAIN)
-                        ))
+                            'message' => __('Permalinks must be enabled for login page to work properly', self::DOMAIN)
+                        ))*/
                     ),
                     array(
                         'name' => self::SIGNUP_PAGE,
                         'title' => __('Page for sign up', self::DOMAIN),
                         'type' => 'select',
                         'list' => $pages,
-                        'precond' => array(array(
+                        /*'precond' => array(array(
                             'cond' => (get_option('permalink_structure') != ''),
-                            'message' => __('Permalinks must be enabled for program listings search to work properly', self::DOMAIN)
-                        ))
+                            'message' => __('Permalinks must be enabled for sign up page to work properly', self::DOMAIN)
+                        ))*/
                     ),
                     array(
                         'name' => self::SEARCH_PAGE,
                         'title' => __('Search page', self::DOMAIN),
                         'type' => 'select',
                         'list' => $pages,
-                        'precond' => array(array(
+                        /*'precond' => array(array(
                             'cond' => (get_option('permalink_structure') != ''),
-                            'message' => __('Permalinks must be enabled for program listings search to work properly', self::DOMAIN)
-                        ))
+                            'message' => __('Permalinks must be enabled for search page to work properly', self::DOMAIN)
+                        ))*/
+                    ),
+                    array(
+                        'name' => 'max_duration',
+                        'title' => __('Maximum duration, in days, for an auction', self::DOMAIN),
+                        'type' => 'number'
                     )
                 )
             )

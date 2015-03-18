@@ -4,13 +4,10 @@
  * @version 1.0
  */
 
-$GLOBALS['custom_post_type_name'] = 'auction';
-
 function auction_register_post_type() {
-    global $custom_post_type_name;
-    $rewrite_slug = $custom_post_type_name;
+    $rewrite_slug = Auction::CUSTOM_POST_TYPE;
 
-    register_post_type( $custom_post_type_name, array(
+    register_post_type( Auction::CUSTOM_POST_TYPE, array(
         'labels'             => array(
             'name'               => __('Auctions',Auction::DOMAIN),
             'singular_name'      => __('Auction',Auction::DOMAIN),
@@ -30,8 +27,9 @@ function auction_register_post_type() {
         'show_in_menu'       => true,
         'show_in_nav_menus'  => true,
         'query_var'          => true,
-        'taxonomies'         => array($custom_post_type_name . '_categories'),
-        'rewrite'            => array('slug' => $custom_post_type_name . '/%'. $custom_post_type_name . '_categories%', 'with_front' => false),
+        //'taxonomies'         => array(Auction::CUSTOM_POST_TYPE . '_categories'),
+        'taxonomies'         => array('categories'),
+        'rewrite'            => array('slug' => Auction::CUSTOM_POST_TYPE . '/%'. Auction::CUSTOM_POST_TYPE . '_categories%', 'with_front' => false),
         'menu_icon'          => 'dashicons-cart',
         'capabilities'       =>     array(
             'edit_post'      => 'read',
@@ -48,7 +46,7 @@ function auction_register_post_type() {
             'edit_private_posts'     => 'read',
             'edit_published_posts'   => 'read',
         ),
-        'has_archive'        => $custom_post_type_name,
+        'has_archive'        => Auction::CUSTOM_POST_TYPE,
         'hierarchical'       => true,
         'menu_position'      => 28,
         'supports'           => array( 'title', 'editor', 'author', 'thumbnail', 'excerpt' ),
@@ -64,16 +62,15 @@ function auction_register_post_type() {
 }
 add_action( 'init', 'auction_register_post_type', 0 );
 function auction_taxonomy() {
-    global $custom_post_type_name;
     register_taxonomy(
-        $custom_post_type_name . '_categories',  //The name of the taxonomy. Name should be in slug form (must not contain capital letters or spaces).
-        $custom_post_type_name,            //post type name
+        Auction::CUSTOM_POST_TYPE . '_categories',  //The name of the taxonomy. Name should be in slug form (must not contain capital letters or spaces).
+        Auction::CUSTOM_POST_TYPE,            //post type name
         array(
             'hierarchical'      => true,
             'label'             => __('Categories'),
             'query_var'         => true,
             'rewrite'           => array(
-                'slug'          => $custom_post_type_name, // This controls the base slug that will display before each term
+                'slug'          => Auction::CUSTOM_POST_TYPE, // This controls the base slug that will display before each term
                 'with_front'    => false // Don't display the category base before
             )
         )        
@@ -82,19 +79,17 @@ function auction_taxonomy() {
 add_action( 'init', 'auction_taxonomy');
 
 function filter_post_type_link( $link, $post) {
-    global $custom_post_type_name;
-    if ( $post->post_type != $custom_post_type_name )
+    if ( $post->post_type != Auction::CUSTOM_POST_TYPE )
         return $link;
 
-    if ( $cats = get_the_terms( $post->ID, $custom_post_type_name . '_categories' ) )
-        $link = str_replace( '%' . $custom_post_type_name . '_categories%', array_pop($cats)->slug, $link );
+    if ( $cats = get_the_terms( $post->ID, Auction::CUSTOM_POST_TYPE . '_categories' ) )
+        $link = str_replace( '%' . Auction::CUSTOM_POST_TYPE . '_categories%', array_pop($cats)->slug, $link );
     return $link;
 }
 add_filter('post_type_link', 'filter_post_type_link', 10, 2);
 
 /*function auction_taxonomies_categories() {
-    global $custom_post_type_name;
-    register_taxonomy('category', $custom_post_type_name, array(
+    register_taxonomy('category', Auction::CUSTOM_POST_TYPE, array(
             'labels' => array(
                 'name'               => __('Categories'),
                 'singular_name'      => __('Category'),
@@ -115,7 +110,7 @@ add_filter('post_type_link', 'filter_post_type_link', 10, 2);
             'hierarchical'  => true,
             'public'        => true,
             'query_var'     => 'category',
-            'rewrite'       =>  array('slug' => $custom_post_type_name ),
+            'rewrite'       =>  array('slug' => Auction::CUSTOM_POST_TYPE ),
             '_builtin'      => false,
         )
     );
@@ -140,9 +135,8 @@ add_filter('post_link', 'category_permalink', 1, 3);
 add_filter('post_type_link', 'category_permalink', 1, 3);*/
 
 function auction_custom_post_status() {
-    global $custom_post_type_name;
     register_post_status( 'closed', array(
-        'label'                     => _x( 'Closed', $custom_post_type_name ),
+        'label'                     => _x( 'Closed', Auction::CUSTOM_POST_TYPE ),
         'public'                    => true,
         'show_in_admin_all_list'    => false,
         'show_in_admin_status_list' => true,
@@ -152,11 +146,10 @@ function auction_custom_post_status() {
 add_action( 'init', 'auction_custom_post_status' );
 
 function auction_append_post_status_list() {
-    global $custom_post_type_name;
     global $post;
     $complete = '';
     $label = '';
-    if($post->post_type == $custom_post_type_name) {
+    if($post->post_type == Auction::CUSTOM_POST_TYPE) {
         if($post->post_status == 'closed'){
            $complete = ' selected="selected"';
            $label = '<span id="post-status-display"> ' . __('Closed', Auction::DOMAIN) . '</span>';
@@ -190,8 +183,8 @@ add_filter( 'display_post_states', 'auction_display_archive_state' );
  * Product custom post type update labels.
  */
 function updated_auction_messages( $messages ) {
-    global $post, $post_ID, $custom_post_type_name;
-    $messages[$custom_post_type_name] = array(
+    global $post, $post_ID;
+    $messages[Auction::CUSTOM_POST_TYPE] = array(
         0 => '', 
         1 => sprintf( __('Auction updated. <a href="%s">View auction</a>'), esc_url( get_permalink($post_ID) ) ),
         2 => __('Custom field updated.'),
@@ -216,6 +209,7 @@ function auction_edit_columns($columns) {
     "categories" => __("Categories"),
     "start_price" => __("Start price", Auction::DOMAIN),
     "date" => __("Date"),
+    "end_date" => __("End Date", Auction::DOMAIN),
     "comments" => __("Comments"),
     "thumbnail" => __("Thumbnail", Auction::DOMAIN)
   );
@@ -236,23 +230,37 @@ function auction_render_post_columns($column, $id) {
         case 'start_price':
             echo get_post_meta( $id, 'start_price', true);
             break;
+        case 'end_date':
+            echo '<abbr title="' . get_post_meta( $id, 'end_date', true) . '">' . human_time_diff(time(), strtotime(get_post_meta( $id, 'end_date', true))) . '</abbr><br>';
+            break;
         case "thumbnail":
             $attachment_ids = explode( ',', get_post_meta( $id, '_easy_image_gallery', true ));
-            $attachment_id = $attachment_ids[0];
-            $image = wp_get_attachment_image( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
-            echo $image;
+            if ($attachment_ids && (count($attachment_ids) === 1 && count($attachment_ids[0]) > 1)) {
+                $attachment_id = $attachment_ids[0];
+                $image = wp_get_attachment_image( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
+                echo $image;
+            } else {
+                echo '<img src="' . plugins_url('img/no-img.png', __FILE__ ) . '" alt="No image" height="100" width="100" />';
+            }
             break;
     }
 }
 add_action('manage_auction_posts_custom_column', 'auction_render_post_columns', 10, 2);
 
 function custom_meta_box() {
-    global $custom_post_type_name;
     add_meta_box( 
         'start_price',
         __( 'Start price', Auction::DOMAIN ),
         'start_price_box_content',
-        $custom_post_type_name,
+        Auction::CUSTOM_POST_TYPE,
+        'side',
+        'low'
+    );
+    add_meta_box( 
+        'end_date', 
+        __('End date', Auction::DOMAIN), 
+        'end_date_box_content', 
+        Auction::CUSTOM_POST_TYPE,
         'side',
         'low'
     );
@@ -260,12 +268,85 @@ function custom_meta_box() {
 add_action( 'add_meta_boxes', 'custom_meta_box' );
 
 function save_custom_fields($post_id) {
+    /*if (!isset($_POST['start_price'])) return $post_id;
+        if ( !wp_verify_nonce( $_POST['start_price'], plugin_basename(__FILE__) ) )
+            return $post_id;
+    if (!isset($_POST['end_date'])) return $post_id;
+        if ( !wp_verify_nonce( $_POST['end_date'], plugin_basename(__FILE__) ) )
+            return $post_id;
+    */
+
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
       return $post_id;
 
     // Start price
     if (isset($_POST['start_price'])) {
+        if ($_POST['start_price'] <= 0) {
+            add_settings_error(
+                'start_praice',
+                '',
+                __('No start price', Auction::DOMAIN),
+                'error'
+            );
+            set_transient( 'settings_errors', get_settings_errors(), 30 );
+            return false;
+        }
         update_post_meta($post_id, 'start_price', $_POST['start_price']);
+    } else {
+        add_settings_error(
+            'start_praice',
+            '',
+            __('No start price', Auction::DOMAIN),
+            'error'
+        );
+        set_transient( 'settings_errors', get_settings_errors(), 30 );
+        return false;
+    }
+
+    if (isset($_POST['end_date'])) {
+        $date = $_POST['end_date'];
+        $dparse = date_parse($date);
+        if ($dparse['error_count'] === 0) {
+            if (strtotime($date) < strtotime('+1 day')) {
+                add_settings_error(
+                    'end_date',
+                    '',
+                    __('End date has to be at least 1 day ahead', Auction::DOMAIN),
+                    'error'
+                );
+                set_transient( 'settings_errors', get_settings_errors(), 30 );
+                return false;
+            }
+            if (strtotime($date) < strtotime('+' . get_option('max_duration') . ' day')) {
+                add_settings_error(
+                    'end_date',
+                    '',
+                    __('End date can not be more than ' . get_option('max_duration') . ' days ahead of today', Auction::DOMAIN),
+                    'error'
+                );
+                set_transient( 'settings_errors', get_settings_errors(), 30 );
+                return false;
+            }
+            update_post_meta( $post_id, 'end_date', $date );
+        } else {
+            add_settings_error(
+                'end_date',
+                '',
+                __('Wrong end date', Auction::DOMAIN),
+                'error'
+            );
+            set_transient( 'settings_errors', get_settings_errors(), 30 );
+            return false;
+        }
+    } else {
+        add_settings_error(
+            'end_date',
+            '',
+            __('No end date', Auction::DOMAIN),
+            'error'
+        );
+        set_transient( 'settings_errors', get_settings_errors(), 30 );
+        return false;
     }
 
 }
@@ -273,11 +354,40 @@ add_action('save_post', 'save_custom_fields');
 
 
 function start_price_box_content($post) {
+    wp_nonce_field( plugin_basename(__FILE__), 'start_price' );
     ?>
         <input type="number" name="start_price" id="start_price" value="<?php echo get_post_meta( $post->ID, 'start_price', true ); ?>" /> DKK
     <?php
 }
 
+function end_date_box_content($post) {
+    wp_nonce_field( plugin_basename(__FILE__), 'end_date' );
+    ?>
+        <input type="datetime" name="end_date" id="end_date" value="<?php echo get_post_meta( $post->ID, 'end_date', true); ?>" />
+    <?php
+}
+
+function _location_admin_notices() {
+    // If there are no errors, then we'll exit the function
+    if ( ! ( $errors = get_transient( 'settings_errors' ) ) ) {
+    return;
+    }
+
+    // Otherwise, build the list of errors that exist in the settings errores
+    $message = '<div id="acme-message" class="error below-h2"><p><ul>';
+    foreach ( $errors as $error ) {
+    $message .= '<li>' . $error['message'] . '</li>';
+    }
+    $message .= '</ul></p></div><!-- #error -->';
+
+    // Write them out to the screen
+    echo $message;
+
+    // Clear and the transient and unhook any other notices so we don't see duplicate messages
+    delete_transient( 'settings_errors' );
+    remove_action( 'admin_notices', '_location_admin_notices' );
+}
+add_action( 'admin_notices', '_location_admin_notices' );
 
 function Auction_rewrite_flush() {
     Auction_register_exhibition_type();
