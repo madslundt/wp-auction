@@ -102,6 +102,9 @@ add_action( 'widgets_init', 'auction_widgets_init' );
  * Enqueue scripts and styles.
  */
 function auction_scripts() {
+	wp_deregister_script( 'jquery' );
+	wp_register_script('jquery', get_template_directory_uri() . 'js/jquery.min.js', array(), '1.11.2');
+
 	wp_enqueue_style( 'auction-style', get_stylesheet_uri() );
 
 	wp_enqueue_script( 'auction-navigation', get_template_directory_uri() . '/js/navigation.js', array(), '20120206', true );

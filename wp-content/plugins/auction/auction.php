@@ -17,6 +17,10 @@ class Auction {
     const SIGNUP_PAGE = 'signup-page';
     const SEARCH_PAGE = 'search_results-page';
 
+    const DATE_FORMAT = 'dd/mm/yy';
+    const DATE_FORMAT_PHP = 'd/m/Y';
+
+
     /**
      * Name for setting page
      * @var string
@@ -62,12 +66,12 @@ class Auction {
 
     public function register_widgets() {
         register_widget('SearchWidget');
-        register_widget('NewestWidget');
+        register_widget('ShowWidget');
     }
 
     private function load_dependencies() {
         require('widgets/searchwidget.php');
-        require('widgets/newestwidget.php');
+        require('widgets/showwidget.php');
         require('custom-post-type.php');
     }
 
@@ -214,6 +218,9 @@ class Auction {
             case 'password':
                 echo '<input class="'.$class.'" name="'.$args['name'].'" type="password" value="'.$current_value.'" />';
                 break;
+            case 'number':
+                echo '<input class="'.$class.'" name="'.$args['name'].'" type="number" value="'.$current_value.'" />';
+                break;
             case 'text':
             default:
                 echo '<input class="'.$class.'" name="'.$args['name'].'" type="text" value="'.$current_value.'" />';
@@ -277,6 +284,18 @@ class Auction {
         }
     }
 
+    public static function printThumbnail($post_id) {
+        $attachment_ids = explode( ',', get_post_meta( $post_id, '_easy_image_gallery', true ));
+
+        if ($attachment_ids && (count($attachment_ids) > 0 && strlen($attachment_ids[0]) > 0)) {
+            $attachment_id = $attachment_ids[0];
+            $image = wp_get_attachment_image( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
+            echo $image;
+        } else {
+            echo '<img src="' . plugins_url('img/no-img.jpg', __FILE__ ) . '" alt="No image" height="100" width="100" />';
+        }
+    }
+
     function register_a_user(){
       if(isset($_GET['do']) && $_GET['do'] == 'register'):
         $errors = array();
@@ -313,11 +332,15 @@ class Auction {
       endif;
     }
 
-    function load_admin_dependencies() {
-        wp_deregister_script('jquery');
-        wp_register_script('jquery', plugins_url( 'scripts/jquery.min.js' , __FILE__ ), array(), '1.11.2');
-        wp_enqueue_style('jqueryui',plugins_url( 'css/jquery-ui.css' , __FILE__ ),false,'1.11.4');
-        wp_enqueue_script('auction-admin-functions',plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-core', 'jquery-ui-datepicker'),'1.0',true);
+    public function load_admin_dependencies() {
+        wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/themes/smoothness/jquery-ui.css');
+        wp_enqueue_script('auction-admin-functions',plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-datepicker'),'1.0',true);
+        $max_duration = get_option('max_duration') ? get_option('max_duration') : 10;
+        $translation_array = array(
+            'max_duration' => $max_duration,
+            'date_format'  => self::DATE_FORMAT
+        );
+        wp_localize_script( 'auction-admin-functions', 'auction_admin', $translation_array );
     }
 }
 

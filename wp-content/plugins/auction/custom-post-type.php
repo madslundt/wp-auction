@@ -28,8 +28,8 @@ function auction_register_post_type() {
         'show_in_nav_menus'  => true,
         'query_var'          => true,
         //'taxonomies'         => array(Auction::CUSTOM_POST_TYPE . '_categories'),
-        'taxonomies'         => array('categories'),
-        'rewrite'            => array('slug' => Auction::CUSTOM_POST_TYPE . '/%'. Auction::CUSTOM_POST_TYPE . '_categories%', 'with_front' => false),
+        'taxonomies'         => array('category'),
+        'rewrite'            => array('slug' => Auction::CUSTOM_POST_TYPE . '/%category%', 'with_front' => false),
         'menu_icon'          => 'dashicons-cart',
         'capabilities'       =>     array(
             'edit_post'      => 'read',
@@ -61,7 +61,7 @@ function auction_register_post_type() {
     ));
 }
 add_action( 'init', 'auction_register_post_type', 0 );
-function auction_taxonomy() {
+/*function auction_taxonomy() {
     register_taxonomy(
         Auction::CUSTOM_POST_TYPE . '_categories',  //The name of the taxonomy. Name should be in slug form (must not contain capital letters or spaces).
         Auction::CUSTOM_POST_TYPE,            //post type name
@@ -76,14 +76,14 @@ function auction_taxonomy() {
         )        
     );
 }
-add_action( 'init', 'auction_taxonomy');
+add_action( 'init', 'auction_taxonomy');*/
 
 function filter_post_type_link( $link, $post) {
     if ( $post->post_type != Auction::CUSTOM_POST_TYPE )
         return $link;
 
-    if ( $cats = get_the_terms( $post->ID, Auction::CUSTOM_POST_TYPE . '_categories' ) )
-        $link = str_replace( '%' . Auction::CUSTOM_POST_TYPE . '_categories%', array_pop($cats)->slug, $link );
+    if ( $cats = get_the_terms( $post->ID, 'category' ) )
+        $link = str_replace( '%category%', array_pop($cats)->slug, $link );
     return $link;
 }
 add_filter('post_type_link', 'filter_post_type_link', 10, 2);
@@ -234,15 +234,7 @@ function auction_render_post_columns($column, $id) {
             echo '<abbr title="' . get_post_meta( $id, 'end_date', true) . '">' . human_time_diff(time(), strtotime(get_post_meta( $id, 'end_date', true))) . '</abbr><br>';
             break;
         case "thumbnail":
-            $attachment_ids = explode( ',', get_post_meta( $id, '_easy_image_gallery', true ));
-
-            if ($attachment_ids && (count($attachment_ids) > 0 && strlen($attachment_ids[0]) > 0)) {
-                $attachment_id = $attachment_ids[0];
-                $image = wp_get_attachment_image( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
-                echo $image;
-            } else {
-                echo '<img src="' . plugins_url('img/no-img.jpg', __FILE__ ) . '" alt="No image" height="100" width="100" />';
-            }
+            Auction::printThumbnail($id);
             break;
     }
 }
@@ -306,6 +298,7 @@ function save_custom_fields($post_id) {
 
     if (isset($_POST['end_date'])) {
         $date = $_POST['end_date'];
+        $date = date_format(date_create_from_format(Auction::DATE_FORMAT_PHP, $date), 'd-m-Y');
         $dparse = date_parse($date);
         if ($dparse['error_count'] === 0) {
             if (strtotime($date) < strtotime('+1 day')) {
@@ -318,7 +311,7 @@ function save_custom_fields($post_id) {
                 set_transient( 'settings_errors', get_settings_errors(), 30 );
                 return false;
             }
-            if (strtotime($date) < strtotime('+' . get_option('max_duration') . ' day')) {
+            if (strtotime($date) > strtotime('+' . get_option('max_duration') . ' day')) {
                 add_settings_error(
                     'end_date',
                     '',
@@ -351,7 +344,7 @@ function save_custom_fields($post_id) {
     }
 
 }
-add_action('save_post', 'save_custom_fields');
+add_action('save_post_' . Auction::CUSTOM_POST_TYPE, 'save_custom_fields');
 
 
 function start_price_box_content($post) {
@@ -364,7 +357,7 @@ function start_price_box_content($post) {
 function end_date_box_content($post) {
     wp_nonce_field( plugin_basename(__FILE__), 'end_date' );
     ?>
-        <input type="datetime" name="end_date" id="end_date" value="<?php echo get_post_meta( $post->ID, 'end_date', true); ?>" />
+        <input type="datetime" name="end_date" id="end_date_js" value="<?php echo get_post_meta( $post->ID, 'end_date', true); ?>" />
     <?php
 }
 

@@ -5,7 +5,7 @@ $args = array(
   'posts_per_page' => $max_auctions,
   'caller_get_posts'=> 1,
   'orderby' => 'date',
-  'order' => 'DESC',
+  'order' => 'ASC',
   'date_query' => array(
   	array(
   		'after' => strtotime(date('Y-m-d'))

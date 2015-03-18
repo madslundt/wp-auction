@@ -4,7 +4,7 @@ $args = array(
   'post_status' => 'publish',
   'posts_per_page' => $max_auctions,
   'caller_get_posts'=> 1,
-  'orderby' => 'date',
+  'orderby' => 'comment_count',
   'order' => 'DESC',
   'date_query' => array(
   	array(

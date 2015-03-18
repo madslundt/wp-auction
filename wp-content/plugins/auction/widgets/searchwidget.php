@@ -30,7 +30,7 @@ class SearchWidget extends WP_Widget {
 
     private function getSearchBox() {
         ob_start();
-        include '../templates/search.php';
+        include plugin_dir_path(__FILE__) . '../templates/search.php';
         return ob_get_clean();
     }
 

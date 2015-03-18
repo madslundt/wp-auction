@@ -8,16 +8,17 @@
  * WordPress Widget that makes it possible to style
  * and display a search tool for program listings using elasticsearch
  */
-class NewestWidget extends WP_Widget {
+class ShowWidget extends WP_Widget {
     /**
      * Constructor
      */
+
     public function __construct() {
         
         parent::__construct(
-            'newest-auctions-widget',
-            __('Newest auctions',Auction::DOMAIN),
-            array( 'description' => __('Get a list of newest auctions',Auction::DOMAIN) )
+            'show-auctions-widget',
+            __('Show auctions',Auction::DOMAIN),
+            array( 'description' => __('Get a list of auctions',Auction::DOMAIN) )
         );
 
         $this->fields = array(
@@ -28,9 +29,9 @@ class NewestWidget extends WP_Widget {
         );
     }
 
-    private function getNewest() {
+    private function getNewest($template = 'newest', $max_auctions = 10) {
         ob_start();
-        include '../templates/newest.php';
+        include plugin_dir_path(__FILE__) . '../templates/' . $template . '.php';
         return ob_get_clean();
     }
 
@@ -52,7 +53,7 @@ class NewestWidget extends WP_Widget {
         	echo '<h3>' . $instance['title'] . '</h3>';
         }
         echo $args['after_title'];
-        echo $this->getNewest();
+        echo $this->getNewest($instance['mode'], $max_auctions);
         echo '</div>';
         echo $args['after_widget'];
     }
@@ -67,6 +68,10 @@ class NewestWidget extends WP_Widget {
         if (isset($instance['max_auctions'])) {
             $max_auctions = $instance['max_auctions'];
         }
+        $mode = '';
+        if (isset($instance['mode'])) {
+            $mode = $instance['mode'];
+        }
     ?>
         <p>
             <label for="<?php echo $this->get_field_id( 'title' ); ?>"><?php _e('Title:'); ?></label> 
@@ -75,6 +80,21 @@ class NewestWidget extends WP_Widget {
         <p>
             <label for="<?php echo $this->get_field_id( 'max_auctions' ); ?>"><?php _e('Number of auctions:', Auction::DOMAIN); ?></label> 
             <input class="widefat" id="<?php echo $this->get_field_id( 'max_auctions' ); ?>" name="<?php echo $this->get_field_name( 'max_auctions' ); ?>" type="number" value="<?php echo esc_attr( $max_auctions ); ?>" />
+        </p>
+        <p>
+			<label for="<?php echo $this->get_field_id('mode'); ?>"><?php _e('Auction mode:', Auction::DOMAIN); ?>
+				<select class='widefat' id="<?php echo $this->get_field_id('mode'); ?>" name="<?php echo $this->get_field_name('mode'); ?>" type="text">
+					<option value='latest'<?php echo ($mode=='latest')?'selected':''; ?>>
+					Latest auctions right now
+					</option>
+					<option value='hottest'<?php echo ($mode=='hottest')?'selected':''; ?>>
+					Hottest auction right now
+					</option> 
+					<option value='newest'<?php echo ($mode=='newest')?'selected':''; ?>>
+					Newest auctions right now
+					</option> 
+				</select>                
+			</label>
         </p>
     <?php 
     }
