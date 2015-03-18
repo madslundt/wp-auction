@@ -235,12 +235,13 @@ function auction_render_post_columns($column, $id) {
             break;
         case "thumbnail":
             $attachment_ids = explode( ',', get_post_meta( $id, '_easy_image_gallery', true ));
-            if ($attachment_ids && (count($attachment_ids) === 1 && count($attachment_ids[0]) > 1)) {
+
+            if ($attachment_ids && (count($attachment_ids) > 0 && strlen($attachment_ids[0]) > 0)) {
                 $attachment_id = $attachment_ids[0];
                 $image = wp_get_attachment_image( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
                 echo $image;
             } else {
-                echo '<img src="' . plugins_url('img/no-img.png', __FILE__ ) . '" alt="No image" height="100" width="100" />';
+                echo '<img src="' . plugins_url('img/no-img.jpg', __FILE__ ) . '" alt="No image" height="100" width="100" />';
             }
             break;
     }

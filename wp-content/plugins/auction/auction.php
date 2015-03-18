@@ -42,6 +42,8 @@ class Auction {
             add_action('admin_menu', array(&$this,'create_submenu'));
             add_action('admin_init', array(&$this,'register_settings'));
             add_action('admin_init', array(&$this,'settings_updated'));
+            add_action('admin_print_styles-post.php', array(&$this, 'load_admin_dependencies'));
+            add_action('admin_print_styles-post-new.php', array(&$this, 'load_admin_dependencies'));
         }
         add_action('template_redirect', array(&$this, 'register_a_user'));
 
@@ -309,6 +311,13 @@ class Auction {
         if(!empty($errors)) define('REGISTRATION_ERROR', serialize($errors));
         else define('REGISTERED_A_USER', $user_email);
       endif;
+    }
+
+    function load_admin_dependencies() {
+        wp_deregister_script('jquery');
+        wp_register_script('jquery', plugins_url( 'scripts/jquery.min.js' , __FILE__ ), array(), '1.11.2');
+        wp_enqueue_style('jqueryui',plugins_url( 'css/jquery-ui.css' , __FILE__ ),false,'1.11.4');
+        wp_enqueue_script('auction-admin-functions',plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-core', 'jquery-ui-datepicker'),'1.0',true);
     }
 }
 
