@@ -59,3 +59,12 @@
 </nav>
 
     <div class="container">
+<?php
+if ( ! is_active_sidebar( 'header-1' ) ) {
+    return;
+}
+?>
+
+<div id="secondary" class="widget-area" role="complementary">
+    <?php dynamic_sidebar( 'header-1' ); ?>
+</div><!-- #secondary -->

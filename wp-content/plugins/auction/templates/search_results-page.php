@@ -1,6 +1,5 @@
 <?php get_header(); ?>
 <h1>Search results</h1>
-<?php Auction::create_search_form(); ?>
 <?php
 $my_query = Auction::get_search_results();
 if( $my_query->have_posts() ):
