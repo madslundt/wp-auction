@@ -28,12 +28,6 @@ class SearchWidget extends WP_Widget {
         );
     }
 
-    private function getSearchBox() {
-        ob_start();
-        include plugin_dir_path(__FILE__) . '../templates/search.php';
-        return ob_get_clean();
-    }
-
     /**
      * GUI for widget content
      * 
@@ -46,7 +40,7 @@ class SearchWidget extends WP_Widget {
         echo $args['before_widget'];
         // echo $args['before_title'];
         // echo $args['after_title'];
-        echo $this->getSearchBox();
+        Auction::create_search_form(__('Search for auctions', Auction::DOMAIN));
         echo $args['after_widget'];
     }
 
