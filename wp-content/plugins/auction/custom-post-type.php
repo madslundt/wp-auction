@@ -26,7 +26,7 @@ function auction_register_post_type() {
         'show_ui'            => true,
         'show_in_menu'       => true,
         'show_in_nav_menus'  => true,
-        'query_var'          => true,
+        'query_var'          => Auction::CUSTOM_POST_TYPE,
         //'taxonomies'         => array(Auction::CUSTOM_POST_TYPE . '_categories'),
         'taxonomies'         => array('category'),
         'rewrite'            => array('slug' => Auction::CUSTOM_POST_TYPE . '/%category%', 'with_front' => false),

@@ -9,12 +9,30 @@
 ?>
 
 	</div><!-- .container -->
-
+	
 	<footer id="colophon" class="site-footer" role="contentinfo">
-		<div class="site-info">
-			<a href="<?php echo esc_url( __( 'http://wordpress.org/', 'auction' ) ); ?>"><?php printf( __( 'Proudly powered by %s', 'auction' ), 'WordPress' ); ?></a>
-			<span class="sep"> | </span>
-			<?php printf( __( 'Theme: %1$s by %2$s.', 'auction' ), 'auction', '<a href="http://underscores.me/" rel="designer">Underscores.me</a>' ); ?>
+		<div class="site-info container">
+			<div class="col-xs-12 col-sm-4">
+				<?php
+					if ( is_active_sidebar( 'footer-1' ) ) {
+						dynamic_sidebar( 'footer-1' );
+					}
+				?>
+			</div>
+			<div class="col-xs-12 col-sm-4">
+				<?php
+					if ( is_active_sidebar( 'footer-2' ) ) {
+						dynamic_sidebar( 'footer-2' );
+					}
+				?>
+			</div>
+			<div class="col-xs-12 col-sm-4">
+				<?php
+					if ( is_active_sidebar( 'footer-3' ) ) {
+						dynamic_sidebar( 'footer-3' );
+					}
+				?>
+			</div>
 		</div><!-- .site-info -->
 	</footer><!-- #colophon -->
 </div><!-- #page -->

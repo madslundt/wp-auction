@@ -44,6 +44,7 @@ if( $my_query->have_posts() ):
 				the_content();
 			}
 		?>
+		<?php comments_number( 'no responses', 'one response', '% responses' ); ?>
 	</div>
 </div>
 
