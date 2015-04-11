@@ -13,7 +13,7 @@
 
 get_header(); ?>
 <div class="row">
-    <div class="col-xs-12 col-sm-8 pull-right">
+    <div class="col-xs-12">
 		<div id="primary" class="content-area">
 			<main id="main" class="site-main" role="main">
 
@@ -36,9 +36,6 @@ get_header(); ?>
 
 			</main><!-- #main -->
 		</div><!-- #primary -->
-	</div>
-	<div class="pull-left col-xs-12 col-sm-4">
-		<?php get_sidebar(); ?>
 	</div>
 </div>
 <?php get_footer(); ?>
