@@ -157,8 +157,8 @@ function auction_append_post_status_list() {
         echo '
         <script>
         jQuery(document).ready(function($){
-           $("select#post_status").append("<option value="closed" '.$complete.'>' . __('Closed', Auction::DOMAIN) . '</option>");
-           $(".misc-pub-section label").append("'.$label.'");
+           $(\'select#post_status\').append(\'<option value="closed"'.$complete.'>' . __('Closed', Auction::DOMAIN) . '</option>\');
+           $(\'.misc-pub-section label\').append(\''.$label.'\');
         });
         </script>
         ';
@@ -207,9 +207,9 @@ function auction_edit_columns($columns) {
     "cb" => "<input type='checkbox' />",
     "title" => __("Title"),
     "categories" => __("Categories"),
-    "start_price" => __("Start price", Auction::DOMAIN),
+    "type" => __("Type", Auction::DOMAIN),
     "date" => __("Date"),
-    "end_date" => __("End Date", Auction::DOMAIN),
+    "active" => __("Active", Auction::DOMAIN),
     "comments" => __("Comments"),
     "thumbnail" => __("Thumbnail", Auction::DOMAIN)
   );
@@ -219,19 +219,19 @@ function auction_edit_columns($columns) {
 add_filter("manage_auction_posts_columns", "auction_edit_columns");
 
 function auction_post_columns($columns) {
-    $columns['start_price'] = __('Start price', Auction::DOMAIN);
+    $columns['price'] = __('Price', Auction::DOMAIN);
     return $columns;
 }
 add_filter('manage_auction_post_columns', 'auction_post_columns');
 
 function auction_render_post_columns($column, $id) {
     global $post;
-    switch ($column) {
-        case 'start_price':
-            echo get_post_meta( $id, 'start_price', true);
+    switch ($column) 
+{        case 'type':
+            echo get_post_meta( $id, 'price', true) ? __('Lend', Auction::DOMAIN) . ' (' . get_post_meta( $id, 'price', true) . ')' : __('Lease', Auction::DOMAIN);
             break;
-        case 'end_date':
-            echo '<abbr title="' . get_post_meta( $id, 'end_date', true) . '">' . human_time_diff(time(), strtotime(get_post_meta( $id, 'end_date', true))) . '</abbr><br>';
+        case 'active':
+            echo Auction::get_dates($id, true) ? __('Active', Auction::DOMAIN) : __('Not active', Auction::DOMAIN); // TODO: This needs to check if it is active between start and end date
             break;
         case "thumbnail":
             Auction::printThumbnail($id);
@@ -242,20 +242,20 @@ add_action('manage_auction_posts_custom_column', 'auction_render_post_columns', 
 
 function custom_meta_box() {
     add_meta_box( 
-        'start_price',
-        __( 'Start price', Auction::DOMAIN ),
-        'start_price_box_content',
+        'price',
+        __( 'Price', Auction::DOMAIN ),
+        'price_box_content',
         Auction::CUSTOM_POST_TYPE,
         'side',
         'low'
     );
     add_meta_box( 
-        'end_date', 
-        __('End date', Auction::DOMAIN), 
-        'end_date_box_content', 
+        'dates', 
+        __('Dates', Auction::DOMAIN), 
+        'dates_box_content', 
         Auction::CUSTOM_POST_TYPE,
-        'side',
-        'low'
+        'normal',
+        'high'
     );
 }
 add_action( 'add_meta_boxes', 'custom_meta_box' );
@@ -272,61 +272,73 @@ function save_custom_fields($post_id) {
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
       return $post_id;
 
-    // Start price
-    if (isset($_POST['start_price'])) {
-        if ($_POST['start_price'] <= 0) {
+    // Price
+    if (isset($_POST['price']) && !empty($_POST['price'])) {
+        if (!is_numeric($_POST['price']) || $_POST['price'] < 0) {
             add_settings_error(
                 'start_praice',
                 '',
-                __('No start price', Auction::DOMAIN),
+                __('Price can not be less than 0', Auction::DOMAIN),
                 'error'
             );
             set_transient( 'settings_errors', get_settings_errors(), 30 );
             return false;
         }
-        update_post_meta($post_id, 'start_price', $_POST['start_price']);
-    } else {
-        add_settings_error(
-            'start_praice',
-            '',
-            __('No start price', Auction::DOMAIN),
-            'error'
-        );
-        set_transient( 'settings_errors', get_settings_errors(), 30 );
-        return false;
+        if ($_POST['price'] > 0) {
+            update_post_meta($post_id, 'price', $_POST['price']);
+        }
     }
 
-    if (isset($_POST['end_date'])) {
-        $date = $_POST['end_date'];
-        $date = date_format(date_create_from_format(Auction::DATE_FORMAT_PHP, $date), 'd-m-Y');
-        $dparse = date_parse($date);
-        if ($dparse['error_count'] === 0) {
-            if (strtotime($date) < strtotime('+1 day')) {
-                add_settings_error(
-                    'end_date',
-                    '',
-                    __('End date has to be at least 1 day ahead', Auction::DOMAIN),
-                    'error'
-                );
-                set_transient( 'settings_errors', get_settings_errors(), 30 );
-                return false;
-            }
-            if (strtotime($date) > strtotime('+' . get_option('max_duration') . ' day')) {
-                add_settings_error(
-                    'end_date',
-                    '',
-                    __('End date can not be more than ' . get_option('max_duration') . ' days ahead of today', Auction::DOMAIN),
-                    'error'
-                );
-                set_transient( 'settings_errors', get_settings_errors(), 30 );
-                return false;
-            }
-            update_post_meta( $post_id, 'end_date', $date );
-        } else {
+    if (isset($_POST['start_dates']) && isset($_POST['end_dates'])) {
+        $start_dates = $_POST['start_dates'];
+        $end_dates   = $_POST['end_dates'];
+        if (count($start_dates) != count($end_dates)) {
             add_settings_error(
-                'end_date',
+                'dates',
                 '',
-                __('Wrong end date', Auction::DOMAIN),
+                __('A start- or end date seems to be empty', Auction::DOMAIN),
+                'error'
+            );
+            set_transient( 'settings_errors', get_settings_errors(), 30 );
+            return false;
+        }
+        $dates_length = count($start_dates);
+        for ($i = 0; $i < $dates_length; $i++) {
+            $start_date = date_format(date_create_from_format(Auction::DATE_FORMAT_PHP, $start_dates[$i]), 'Y-m-d');
+            $end_date = date_format(date_create_from_format(Auction::DATE_FORMAT_PHP, $end_dates[$i]), 'Y-m-d');
+            $start_dparse = date_parse($start_date);
+            $end_dparse = date_parse($end_date);
+            if (!empty($start_dparse) && !empty($end_dparse) && $start_dparse['error_count'] === 0 && $end_dparse['error_count'] === 0) {
+                if (strtotime($end_date) < strtotime($start_date)) {
+                    add_settings_error(
+                        'dates',
+                        '',
+                        __('End date has to be atleast or equal to start date', Auction::DOMAIN),
+                        'error'
+                    );
+                    set_transient( 'settings_errors', get_settings_errors(), 30 );
+                    return false;
+                }
+                update_post_meta( $post_id, 'dates', $date );
+            } else if ($i === 0) {
+                add_settings_error(
+                    'dates',
+                    '',
+                    __('Wrong date', Auction::DOMAIN),
+                    'error'
+                );
+                set_transient( 'settings_errors', get_settings_errors(), 30 );
+                return false;
+            }
+            $start_dates[$i] = $start_date;
+            $end_dates[$i]   = $end_date;
+        }
+
+        if (!Auction::set_dates($post_id, $start_dates, $end_dates)) {
+            add_settings_error(
+                'dates',
+                '',
+                __('Wrong dates', Auction::DOMAIN),
                 'error'
             );
             set_transient( 'settings_errors', get_settings_errors(), 30 );
@@ -334,30 +346,55 @@ function save_custom_fields($post_id) {
         }
     } else {
         add_settings_error(
-            'end_date',
+            'dates',
             '',
-            __('No end date', Auction::DOMAIN),
+            __('No dates', Auction::DOMAIN),
             'error'
         );
         set_transient( 'settings_errors', get_settings_errors(), 30 );
         return false;
     }
-
 }
 add_action('save_post_' . Auction::CUSTOM_POST_TYPE, 'save_custom_fields');
 
 
-function start_price_box_content($post) {
-    wp_nonce_field( plugin_basename(__FILE__), 'start_price' );
+function price_box_content($post) {
+    wp_nonce_field( plugin_basename(__FILE__), 'price' );
     ?>
-        <input type="number" name="start_price" id="start_price" value="<?php echo get_post_meta( $post->ID, 'start_price', true ); ?>" /> DKK
+        <input type="number" name="price" value="<?php echo get_post_meta( $post->ID, 'price', true ); ?>" /> DKK
     <?php
 }
 
-function end_date_box_content($post) {
-    wp_nonce_field( plugin_basename(__FILE__), 'end_date' );
+function dates_box_content($post) {
+    wp_nonce_field( plugin_basename(__FILE__), 'dates' );
+    $dates = Auction::get_dates($post->ID);
     ?>
-        <input type="datetime" name="end_date" id="end_date_js" value="<?php echo get_post_meta( $post->ID, 'end_date', true); ?>" />
+    <ul class="dates">
+    <?php
+    if ($dates):
+        foreach ($dates as $key => $date):
+            $start_date = date_format(date_create_from_format('Y-m-d', $date->start), Auction::DATE_FORMAT_PHP);
+            $end_date   = date_format(date_create_from_format('Y-m-d', $date->end), Auction::DATE_FORMAT_PHP);
+        ?>
+            <li>
+                <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="<?php echo $start_date; ?>" />
+                <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="<?php echo $end_date; ?>" />
+                <a class="remove" href="#"<?php if (count($dates) === 1): ?> style="display: none;"<?php endif; ?>>&times;</a>
+            </li>
+        <?php
+        endforeach;
+    else:
+    ?>
+        <li>
+            <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="" />
+            <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="" />
+            <a class="remove" href="#" style="display: none;">&times;</a>
+        </li>
+    <?php
+    endif;
+    ?>
+    </ul>
+    <a class="button-secondary js-add-dates" href="#"><?php _e('Add one more date', Auction::DOMAIN); ?></a>
     <?php
 }
 

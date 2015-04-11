@@ -31,6 +31,8 @@ class Auction {
     const FLUSH_REWRITE_RULES_OPTION_KEY = 'auction-flush-rewrite-rules';
     const FILTER_PREPARE_RESULTS = 'auction-prepare';
 
+    const DATES_TABLE_PREFIX = 'auction_dates';
+
     public static $search_results;
     public static $search_query_variables = array();
 
@@ -55,6 +57,8 @@ class Auction {
 
     public function __construct() {
         $this->load_dependencies();
+
+        add_action('init', array(&$this, 'create_tables'));
         
         if(is_admin()) {
             add_action('admin_menu', array(&$this,'create_submenu'));
@@ -94,6 +98,31 @@ class Auction {
         require('widgets/searchwidget.php');
         require('widgets/showwidget.php');
         require('custom-post-type.php');
+    }
+
+    public function create_tables() {
+        global $wpdb;
+        $dates_table = $wpdb->prefix . self::DATES_TABLE_PREFIX;
+
+        if($wpdb->get_var("show tables like '$dates_table'") !== $dates_table) {
+            $sql = "CREATE TABLE " . $dates_table . " (
+                    `post_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT '0',
+                    `start` DATE NOT NULL,
+                    `end` DATE NOT NULL,
+                    PRIMARY KEY (`post_id`, `start`, `end`),
+                    INDEX `post_id` (`post_id` ASC),
+                    INDEX `start` (`start` ASC),
+                    INDEX `end` (`end` ASC)
+                )
+                ";
+        }
+        require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+        dbDelta($sql);
+     
+        if (!isset($wpdb->auction_dates)) {
+            $wpdb->auction_dates = $dates_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $dates_table);
+        }
     }
 
     public function settings_updated() {
@@ -578,9 +607,62 @@ class Auction {
       endif;
     }
 
+    public static function get_dates($post_id, $available_today = false) {
+        global $wpdb;
+        $extra = '';
+        if ($available_today) {
+            $extra = ' AND NOW() BETWEEN start AND end';
+        }
+        $results = $wpdb->get_results($wpdb->prepare( 
+            "
+            SELECT start, end
+            FROM $wpdb->auction_dates
+            WHERE post_id = %d
+            " . $extra,
+            $post_id
+        ));
+        return $results;
+    }
+
+    public static function set_dates($post_id, $start_dates, $end_dates) {
+        global $wpdb;
+        if (count($start_dates) != count($end_dates) && count($start_dates) > 0) {
+            return false;
+        }
+        $count = count($start_dates);
+        $insert = '';
+        $remove = array();
+        for ($i = 0; $i < $count; $i++) {
+            $insert .= '(' . $post_id . ', \'' . $start_dates[$i] . '\', \'' . $end_dates[$i] . '\'),';
+            $remove[] = '(start <> \'' . $start_dates[$i] . '\' OR end <> \'' . $end_dates[$i] . '\')';
+        }
+        $insert = rtrim($insert, ',');
+
+        $results = $wpdb->query(
+            "
+            INSERT INTO $wpdb->auction_dates
+            (post_id, start, end)
+            VALUES 
+            " . $insert . " ON DUPLICATE KEY UPDATE post_id=VALUES(post_id), start=VALUES(start), end=VALUES(end)"
+        );
+        if ($results === false) {
+            return false;
+        }
+        if (!empty($remove)) {
+            $results = $wpdb->query(
+                "
+                DELETE FROM $wpdb->auction_dates
+                WHERE post_id=$post_id AND 
+                " . implode($remove, ' AND ')
+            );
+        }
+        return $results !== false;
+    }
+
     public function load_admin_dependencies() {
         wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/themes/smoothness/jquery-ui.css');
-        wp_enqueue_script('auction-admin-functions',plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-datepicker'),'1.0',true);
+        wp_enqueue_style('auction-admin-styles', plugins_url( 'css/admin_styles.css' , __FILE__ ));
+        wp_enqueue_script('auction-admin-functions', plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-datepicker'),'1.0',true);
 
         $translation_array = array(
             'max_duration' => get_option('max_duration', 10),
