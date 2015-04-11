@@ -1,0 +1,18 @@
+For at gøre det lettere at forstå, så benyttes ordet host som en ejer af et produkt, der er sat til at blive lånt/lejet ud.
+
+ - Først og fremmest skal det kun være låne og leje af produkter. Forskellen på de to er, at låne er gratis, og ved leje er der en pris på produktet.
+ - Det skal være muligt, for en host, at sætte flere tidsintervaller for hvornår produktet kan udlånes/udlejes.
+ - En host skal kunne "lukke" et produkt i et tidsinterval. Det skal forstås, at produktet ikke dukker op ved søgninger, da det f.eks. er udlånt.
+ - En host kan også vælge helt at "lukke" (slette) et produkt, hvis det ikke gør sig gældende længere.
+ - Et produkt kan have tilknyttet en anden adresse end hostens, men hvis produktet ingen adresse har, så tilknyttes hostens adresse til produktet.
+ - En bruger skal have fornavn, efternavn, adresse, telefon nr. og e-mail. E-mail bruges ved login.*
+ - Det skal være muligt at anmelde en bruger/host der har udlånt/udlejet eller lånt/lejet noget af en anden bruger.**
+ - En bruger kan kontakte en host ved at sende en besked gennem hjemmesiden. Hver bruger kan maks sende 5 beskeder om dagen, for at undgå spam.
+ - En host af et produkt kan blokere bestemte brugere i, at kommentere på et af hostens produkter. Ved en blokering, bliver der automatisk sendt en advarsel til systemet om, at følgende bruger er blevet blokeret. Det er så muligt for administratoren, at se hvem der f.eks. ellers skulle have blokeret denne bruger.
+
+Udover det blev vi enige om at det skulle laves med WordPress pga. dets administrationspanel er let og intuitivt at benytte.
+
+*Vi snakkede kort om, at det skulle være muligt at logge ind med sin Facebook, da det så er muligt at se hvad ens venner har af produkter derinde. Med Facebook er det også muligt at dele et produkt på sin væg, sende privat beskeder til venner med sit produkt over facebook og generelt lettere for brugeren at logge ind.
+Det kunne dog også bare være at man skulle kunne oprette en bruger og under profilen, få den tilknyttet til sin Facebook profil. Dette er noget vi kan tale vider eom en anden gang.
+
+**Til sidst var der brugeranmeldelser som også skulle med, men her var det ikke sikkert hvordan det skulle foregå.
