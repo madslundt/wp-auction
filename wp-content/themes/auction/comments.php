@@ -13,14 +13,21 @@
  * the visitor has not yet entered the password we will
  * return early without loading the comments.
  */
-if ( post_password_required() ) {
+if ( post_password_required()) {
 	return;
 }
 ?>
 
 <div id="comments" class="comments-area">
 
-	<?php // You can start editing here -- including this comment! ?>
+	<?php // You can start editing here -- including this comment!
+		if (!is_user_logged_in()):
+	?>
+		<p class="lead"><?php _e('Please log in to read and write comments', Auction::DOMAIN); ?></p>
+	<?php
+			return;
+		endif;
+	?>
 
 	<?php if ( have_comments() ) : ?>
 		<h2 class="comments-title">

@@ -49,7 +49,7 @@ function auction_register_post_type() {
         'has_archive'        => Auction::CUSTOM_POST_TYPE,
         'hierarchical'       => true,
         'menu_position'      => 28,
-        'supports'           => array( 'title', 'editor', 'author', 'thumbnail', 'excerpt' ),
+        'supports'           => array( 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'comments' ),
         'status' => array(
             'draft' => array(
                 'label' => __('New')
