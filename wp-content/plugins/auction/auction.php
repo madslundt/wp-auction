@@ -299,6 +299,8 @@ class Auction {
                 return;
             }
         }
+
+        // TODO: Take a look at triggers. Delete an address if no one is using it (products or users)
      
         if (!isset($wpdb->auction_address)) {
             $wpdb->auction_address = $address_table;
