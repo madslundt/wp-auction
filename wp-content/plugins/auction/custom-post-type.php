@@ -228,12 +228,13 @@ function auction_render_post_columns($column, $id) {
     global $post;
     switch ($column) 
 {        case 'type':
-            echo get_post_meta( $id, 'price', true) ? __('Lend', Auction::DOMAIN) . ' (' . get_post_meta( $id, 'price', true) . ')' : __('Lease', Auction::DOMAIN);
+            echo get_post_meta( $id, Auction::PRICE_POST_META, true) ? __('Lend', Auction::DOMAIN) . ' (' . get_post_meta( $id, Auction::PRICE_POST_META, true) . ')' : __('Lease', Auction::DOMAIN);
             break;
         case 'active':
             echo Auction::get_dates($id, true) ? __('Active', Auction::DOMAIN) : __('Not active', Auction::DOMAIN); // TODO: This needs to check if it is active between start and end date
             break;
-        case "thumbnail":
+        case 'thumbnail':
+            echo '<style>.fixed .column-comments{width: 9em !important;}</style>';
             Auction::printThumbnail($id);
             break;
     }
@@ -256,6 +257,14 @@ function custom_meta_box() {
         Auction::CUSTOM_POST_TYPE,
         'normal',
         'high'
+    );
+    add_meta_box( 
+        'address', 
+        __('Address'), 
+        'address_box_content', 
+        Auction::CUSTOM_POST_TYPE,
+        'side',
+        'default'
     );
 }
 add_action( 'add_meta_boxes', 'custom_meta_box' );
@@ -285,7 +294,7 @@ function save_custom_fields($post_id) {
             return false;
         }
         if ($_POST['price'] > 0) {
-            update_post_meta($post_id, 'price', $_POST['price']);
+            update_post_meta($post_id, Auction::PRICE_POST_META, $_POST['price']);
         }
     }
 
@@ -319,7 +328,6 @@ function save_custom_fields($post_id) {
                     set_transient( 'settings_errors', get_settings_errors(), 30 );
                     return false;
                 }
-                update_post_meta( $post_id, 'dates', $date );
             } else if ($i === 0) {
                 add_settings_error(
                     'dates',
@@ -354,6 +362,7 @@ function save_custom_fields($post_id) {
         set_transient( 'settings_errors', get_settings_errors(), 30 );
         return false;
     }
+    // TODO: Save address to a city, zip code, region etc.
 }
 add_action('save_post_' . Auction::CUSTOM_POST_TYPE, 'save_custom_fields');
 
@@ -361,7 +370,7 @@ add_action('save_post_' . Auction::CUSTOM_POST_TYPE, 'save_custom_fields');
 function price_box_content($post) {
     wp_nonce_field( plugin_basename(__FILE__), 'price' );
     ?>
-        <input type="number" name="price" value="<?php echo get_post_meta( $post->ID, 'price', true ); ?>" /> DKK
+        <input type="number" name="price" value="<?php echo get_post_meta( $post->ID, Auction::PRICE_POST_META, true ); ?>" /> DKK
     <?php
 }
 
@@ -396,6 +405,12 @@ function dates_box_content($post) {
     </ul>
     <a class="button-secondary js-add-dates" href="#"><?php _e('Add one more date', Auction::DOMAIN); ?></a>
     <?php
+}
+
+function address_box_content($post) {
+    // TODO: Dropdown with options to choose user address, previous addresses used on other products by the user or new address
+    echo 'TODO';
+    $adresses = Auction::get_addresses();
 }
 
 function _location_admin_notices() {

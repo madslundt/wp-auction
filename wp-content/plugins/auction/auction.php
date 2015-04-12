@@ -31,7 +31,14 @@ class Auction {
     const FLUSH_REWRITE_RULES_OPTION_KEY = 'auction-flush-rewrite-rules';
     const FILTER_PREPARE_RESULTS = 'auction-prepare';
 
-    const DATES_TABLE_PREFIX = 'auction_dates';
+    const DATES_TABLE_PREFIX     = 'auction_dates';
+    const REGIONS_TABLE_PREFIX   = 'auction_regions';
+    const COUNTRIES_TABLE_PREFIX = 'auction_countries';
+    const ADDRESS_TABLE_PREFIX   = 'auction_address';
+    const CITIES_TABLE_PREFIX    = 'auction_cities';
+    const ZIPCODES_TABLE_PREFIX  = 'auction_zipcodes';
+
+    const PRICE_POST_META        = 'auction_price';
 
     public static $search_results;
     public static $search_query_variables = array();
@@ -100,8 +107,16 @@ class Auction {
         require('custom-post-type.php');
     }
 
+    private function create_table($table, $sql) {
+
+    }
+
     public function create_tables() {
         global $wpdb;
+
+        /*===================================
+        =            Dates table            =
+        ===================================*/
         $dates_table = $wpdb->prefix . self::DATES_TABLE_PREFIX;
 
         if($wpdb->get_var("show tables like '$dates_table'") !== $dates_table) {
@@ -115,14 +130,175 @@ class Auction {
                     INDEX `end` (`end` ASC)
                 )
                 ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
         }
-        require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
-        dbDelta($sql);
      
         if (!isset($wpdb->auction_dates)) {
             $wpdb->auction_dates = $dates_table;
             $wpdb->tables[] = str_replace($wpdb->prefix, '', $dates_table);
         }
+        /*-----  End of Dates table  ------*/
+
+
+        /*=====================================
+        =            Countries table            =
+        =====================================*/
+        $countries_table = $wpdb->prefix . self::COUNTRIES_TABLE_PREFIX;
+        if($wpdb->get_var("show tables like '$countries_table'") !== $countries_table) {
+            $sql = "CREATE TABLE " . $countries_table . " (
+                    `country_id` VARCHAR(3) NOT NULL,
+                    `country` VARCHAR(45) NOT NULL,
+                    PRIMARY KEY (`country_id`),
+                    UNIQUE INDEX `country` (`country` ASC)
+                    )
+                ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
+        }
+     
+        if (!isset($wpdb->auction_countries)) {
+            $wpdb->auction_countries = $countries_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $countries_table);
+        }
+
+        // Inserting Denmark in countries
+        $wpdb->query(
+            "
+            INSERT IGNORE INTO $wpdb->auction_countries
+            (country_id, country)
+            VALUES
+            ('DK', 'Danmark')
+            "
+        );
+        /*-----  End of Country table  ------*/
+        
+
+        /*=====================================
+        =            Regions table            =
+        =====================================*/        
+        $regions_table = $wpdb->prefix . self::REGIONS_TABLE_PREFIX;
+        if($wpdb->get_var("show tables like '$regions_table'") !== $regions_table) {
+            $sql = "CREATE TABLE " . $regions_table . " (
+                    `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `country_id` VARCHAR(3) NOT NULL,
+                    `region` VARCHAR(45) NOT NULL,
+                    PRIMARY KEY (`ID`),
+                    UNIQUE INDEX `ix_region` (`country_id` ASC, `region` ASC)
+                    )
+                ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
+        }
+     
+        if (!isset($wpdb->auction_regions)) {
+            $wpdb->auction_regions = $regions_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $regions_table);
+        }
+
+        // Inserting regions
+        // Bornholm
+        // Fyn
+        // København
+        // Københavns omegn
+        // Nordjylland
+        // Nordsjælland
+        // Sydjylland
+        // Vest- og Sydsjælland
+        // Vestjylland
+        // Østjylland
+        // Østsjælland
+
+        $wpdb->query(
+            "
+            INSERT IGNORE INTO $wpdb->auction_regions
+            (country_id, region)
+            VALUES
+            ('DK', 'Bornholm'),
+            ('DK', 'Fyn'),
+            ('DK', 'København'),
+            ('DK', 'Københavns omegn'),
+            ('DK', 'Nordjylland'),
+            ('DK', 'Nordsjælland'),
+            ('DK', 'Sydjylland'),
+            ('DK', 'Vest- og Sydsjælland'),
+            ('DK', 'Vestjylland'),
+            ('DK', 'Østjylland'),
+            ('DK', 'Østsjælland')
+            "
+        );
+        /*-----  End of Regions table  ------*/
+
+
+        /*=====================================
+        =            Cities table            =
+        =====================================*/
+        $cities_table = $wpdb->prefix . self::CITIES_TABLE_PREFIX;
+        if($wpdb->get_var("show tables like '$cities_table'") !== $cities_table) {
+            $sql = "CREATE TABLE " . $cities_table . " (
+                    `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `city` VARCHAR(100) NULL,
+                    `zipcode` VARCHAR(15) NOT NULL,
+                    PRIMARY KEY (`ID`),
+                    UNIQUE INDEX `ix_address` (`city` ASC, `zipcode` ASC)
+                    )
+                ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
+        }
+     
+        if (!isset($wpdb->auction_regions)) {
+            $wpdb->auction_cities = $cities_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $cities_table);
+        }
+        /*-----  End of Cities table  ------*/
+
+
+        /*=====================================
+        =            Zip codes table            =
+        =====================================*/
+        $zipcodes_table = $wpdb->prefix . self::ZIPCODES_TABLE_PREFIX;
+        if($wpdb->get_var("show tables like '$zipcodes_table'") !== $zipcodes_table) {
+            $sql = "CREATE TABLE " . $zipcodes_table . " (
+                    `zipcode` VARCHAR(15) NOT NULL,
+                    `region_id` VARCHAR(100) NULL,
+                    PRIMARY KEY (`zipcode`, `region_id`)
+                    )
+                ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
+        }
+     
+        if (!isset($wpdb->auction_regions)) {
+            $wpdb->auction_zipcodes = $zipcodes_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $zipcodes_table);
+        }
+        /*-----  End of Zip codes table  ------*/
+
+
+        /*=====================================
+        =            Address table            =
+        =====================================*/
+        $address_table = $wpdb->prefix . self::ADDRESS_TABLE_PREFIX;
+        if($wpdb->get_var("show tables like '$address_table'") !== $address_table) {
+            $sql = "CREATE TABLE " . $address_table . " (
+                    `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `city_id` INT NOT NULL,
+                    `address` VARCHAR(100) NOT NULL,
+                    `address_number` VARCHAR(10) NOT NULL,
+                    PRIMARY KEY (`ID`),
+                    UNIQUE INDEX `ix_address` (`city_id` ASC, `address` ASC, `address_number` ASC)
+                    )
+                ";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta($sql);
+        }
+     
+        if (!isset($wpdb->auction_regions)) {
+            $wpdb->auction_address = $address_table;
+            $wpdb->tables[] = str_replace($wpdb->prefix, '', $address_table);
+        }
+        /*-----  End of Address table  ------*/
     }
 
     public function settings_updated() {
@@ -659,13 +835,23 @@ class Auction {
         return $results !== false;
     }
 
+    public static function set_address($post_id, $address) {
+        // TODO save address for a product
+    }
+
+    public static function get_addresses($user_id = false) {
+        if ($user_id === false) {
+            $user_id = get_current_user_id();
+        }
+        // TODO: Find all addresses for a user and his products
+    }
+
     public function load_admin_dependencies() {
         wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/themes/smoothness/jquery-ui.css');
         wp_enqueue_style('auction-admin-styles', plugins_url( 'css/admin_styles.css' , __FILE__ ));
         wp_enqueue_script('auction-admin-functions', plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-datepicker'),'1.0',true);
 
         $translation_array = array(
-            'max_duration' => get_option('max_duration', 10),
             'date_format'  => self::DATE_FORMAT
         );
         wp_localize_script( 'auction-admin-functions', 'auction_admin', $translation_array );

@@ -14,9 +14,9 @@ jQuery(function($) {
     	e.preventDefault();
     	dates = $('.dates li:last-child').clone();
     	dates.children('input').removeClass('hasDatepicker').removeAttr('id').val('');
-    	dates.children('.remove').css({'display': 'inline'});
 
     	$('.dates').append(dates);
+        $('.dates li .remove').css({'display': 'inline'});
         setStartDatepicker(dates.children('.js-start-datepicker'));
         setEndDatepicker(dates.children('.js-end-datepicker'));
     	return false;
@@ -26,9 +26,7 @@ jQuery(function($) {
     	e.preventDefault();
     	$(this).parent('li').remove();
     	var length = $('.dates').children('li').length;
-    	if (length > 1) {
-    		$('.dates li:last-child .remove').css({'display': 'inline'});
-    	} else {
+    	if (length <= 1) {
             $('.dates li .remove').css({'display': 'none'});
         }
     	return false;
