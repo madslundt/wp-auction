@@ -20,6 +20,7 @@ class Auction {
     const DATE_FORMAT = 'dd/mm/yy';
     const DATE_FORMAT_PHP = 'd/m/Y';
 
+    const TOKEN_PREFIX = 'somestring';
 
     const QUERY_KEY_FREETEXT = 'text';
     const QUERY_KEY_PAGE = 'side';
@@ -31,12 +32,7 @@ class Auction {
     const FLUSH_REWRITE_RULES_OPTION_KEY = 'auction-flush-rewrite-rules';
     const FILTER_PREPARE_RESULTS = 'auction-prepare';
 
-    const DATES_TABLE_PREFIX     = 'auction_dates';
-    const REGIONS_TABLE_PREFIX   = 'auction_regions';
-    const COUNTRIES_TABLE_PREFIX = 'auction_countries';
-    const ADDRESS_TABLE_PREFIX   = 'auction_address';
-    const ZIPCODES_TABLE_PREFIX  = 'auction_zipcodes';
-
+    const ADDRESS_USER_META      = 'auction_address';
     const PRICE_POST_META        = 'auction_price';
 
     public static $search_results;
@@ -63,8 +59,6 @@ class Auction {
 
     public function __construct() {
         $this->load_dependencies();
-
-        add_action('init', array(&$this, 'create_tables'));
         
         if(is_admin()) {
             add_action('admin_menu', array(&$this,'create_submenu'));
@@ -78,6 +72,8 @@ class Auction {
         add_action('template_redirect', array(&$this, 'get_search_page'));
         add_action('template_redirect', array(&$this, 'get_login_page'));
         add_action('template_redirect', array(&$this, 'get_signup_page'));
+
+        add_action('wp_ajax_auction_get_regions', array(&$this,'ajax_get_regions') );
 
         self::register_search_query_variable(1, self::QUERY_KEY_FREETEXT, '[^/&]*?', false, null, '', '/');
         self::register_search_query_variable(4, self::QUERY_KEY_CATEGORY, '[^/&]+?', true);
@@ -104,209 +100,8 @@ class Auction {
         require('widgets/searchwidget.php');
         require('widgets/showwidget.php');
         require('custom-post-type.php');
-    }
-
-    private function create_table($table, $sql) {
-
-    }
-
-    public function create_tables() {
-        global $wpdb;
-
-        /*===================================
-        =            Dates table            =
-        ===================================*/
-        $dates_table = $wpdb->prefix . self::DATES_TABLE_PREFIX;
-
-        if($wpdb->get_var("show tables like '$dates_table'") !== $dates_table) {
-            $sql = "CREATE TABLE " . $dates_table . " (
-                    `post_id` BIGINT(20) UNSIGNED NOT NULL,
-                    `start` DATE NOT NULL,
-                    `end` DATE NOT NULL,
-                    PRIMARY KEY (`post_id`, `start`, `end`),
-                    INDEX `fk_dates_post_idx` (`post_id` ASC),
-                    CONSTRAINT `fk_dates_product`
-                        FOREIGN KEY (`post_id`)
-                        REFERENCES `$wpdb->posts` (`ID`)
-                        ON DELETE CASCADE
-                        ON UPDATE NO ACTION
-                    ) ENGINE = InnoDB;
-                ";
-            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-            if (!dbDelta($sql)) {
-                return;
-            }
-        }
-     
-        if (!isset($wpdb->auction_dates)) {
-            $wpdb->auction_dates = $dates_table;
-            $wpdb->tables[] = str_replace($wpdb->prefix, '', $dates_table);
-        }
-        /*-----  End of Dates table  ------*/
-
-
-        /*=====================================
-        =            Countries table            =
-        =====================================*/
-        $countries_table = $wpdb->prefix . self::COUNTRIES_TABLE_PREFIX;
-        if($wpdb->get_var("show tables like '$countries_table'") !== $countries_table) {
-            $sql = "CREATE TABLE " . $countries_table . " (
-                    `short_name` VARCHAR(3) NOT NULL,
-                    `name` VARCHAR(100) NOT NULL,
-                    PRIMARY KEY (`short_name`)
-                    ) ENGINE = InnoDB;
-                ";
-            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-            if (!dbDelta($sql)) {
-                return;
-            }
-        }
-     
-        if (!isset($wpdb->auction_countries)) {
-            $wpdb->auction_countries = $countries_table;
-            $wpdb->tables[] = str_replace($wpdb->prefix, '', $countries_table);
-        }
-
-        // Inserting Denmark in countries
-        $wpdb->query(
-            "
-            INSERT IGNORE INTO $wpdb->auction_countries
-            (short_name, name)
-            VALUES
-            ('DK', 'Danmark')
-            "
-        );
-        /*-----  End of Country table  ------*/
-        
-
-        /*=====================================
-        =            Regions table            =
-        =====================================*/        
-        $regions_table = $wpdb->prefix . self::REGIONS_TABLE_PREFIX;
-        if($wpdb->get_var("show tables like '$regions_table'") !== $regions_table) {
-            $sql = "CREATE TABLE " . $regions_table . " (
-                    `name` VARCHAR(100) NOT NULL,
-                    `countries_short_name` VARCHAR(3) NOT NULL,
-                    PRIMARY KEY (`name`, `countries_short_name`),
-                    INDEX `fk_regions_countries1_idx` (`countries_short_name` ASC),
-                    CONSTRAINT `fk_regions_countries1`
-                        FOREIGN KEY (`countries_short_name`)
-                        REFERENCES `$wpdb->auction_countries` (`short_name`)
-                        ON DELETE RESTRICT
-                        ON UPDATE NO ACTION
-                    ) ENGINE = InnoDB;
-                ";
-            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-            if (!dbDelta($sql)) {
-                return;
-            }
-        }
-     
-        if (!isset($wpdb->auction_regions)) {
-            $wpdb->auction_regions = $regions_table;
-            $wpdb->tables[] = str_replace($wpdb->prefix, '', $regions_table);
-        }
-
-        // Inserting regions
-        // Bornholm
-        // Fyn
-        // København
-        // Københavns omegn
-        // Nordjylland
-        // Nordsjælland
-        // Sydjylland
-        // Vest- og Sydsjælland
-        // Vestjylland
-        // Østjylland
-        // Østsjælland
-
-        $wpdb->query(
-            "
-            INSERT IGNORE INTO $wpdb->auction_regions
-            (countries_short_name, name)
-            VALUES
-            ('DK', 'Bornholm'),
-            ('DK', 'Fyn'),
-            ('DK', 'København'),
-            ('DK', 'Københavns omegn'),
-            ('DK', 'Nordjylland'),
-            ('DK', 'Nordsjælland'),
-            ('DK', 'Sydjylland'),
-            ('DK', 'Vest- og Sydsjælland'),
-            ('DK', 'Vestjylland'),
-            ('DK', 'Østjylland'),
-            ('DK', 'Østsjælland')
-            "
-        );
-        /*-----  End of Regions table  ------*/
-
-
-        /*=====================================
-        =            Zip codes            =
-        =====================================*/
-        $zipcodes_table = $wpdb->prefix . self::ZIPCODES_TABLE_PREFIX;
-        if($wpdb->get_var("show tables like '$zipcodes_table'") !== $zipcodes_table) {
-            $sql = "CREATE TABLE " . $zipcodes_table . " (
-                    `zip_code` VARCHAR(15) NOT NULL,
-                    `regions_name` VARCHAR(100) NOT NULL,
-                    `regions_countries_short_name` VARCHAR(3) NOT NULL,
-                    `city` VARCHAR(100) NOT NULL,
-                    PRIMARY KEY (`zip_code`, `regions_name`, `regions_countries_short_name`),
-                    INDEX `fk_zip_codes_regions1_idx` (`regions_name` ASC, `regions_countries_short_name` ASC),
-                    CONSTRAINT `fk_zip_codes_regions1`
-                        FOREIGN KEY (`regions_name` , `regions_countries_short_name`)
-                        REFERENCES `$wpdb->auction_regions` (`name` , `countries_short_name`)
-                        ON DELETE RESTRICT
-                        ON UPDATE NO ACTION
-                    ) ENGINE = InnoDB;
-                ";
-            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-            if (!dbDelta($sql)) {
-                return;
-            }
-        }
-     
-        if (!isset($wpdb->auction_zipcodes)) {
-            $wpdb->auction_zipcodes = $zipcodes_table;
-            $wpdb->tables[] = str_replace($wpdb->prefix, '', $zipcodes_table);
-        }
-        /*-----  End of Zip codes  ------*/
-
-
-        /*=====================================
-        =            Address table            =
-        =====================================*/
-        $address_table = $wpdb->prefix . self::ADDRESS_TABLE_PREFIX;
-        if($wpdb->get_var("show tables like '$address_table'") !== $address_table) {
-            $sql = "CREATE TABLE " . $address_table . " (
-                    `ID` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-                    `zip_codes_zip_code` VARCHAR(15) NOT NULL,
-                    `zip_codes_regions_name` VARCHAR(100) NOT NULL,
-                    `zip_codes_regions_countries_short_name` VARCHAR(3) NOT NULL,
-                    `street_name` VARCHAR(100) NOT NULL,
-                    `street_number` VARCHAR(20) NOT NULL,
-                    PRIMARY KEY (`ID`),
-                    INDEX `fk_address_zip_codes1_idx` (`zip_codes_zip_code` ASC, `zip_codes_regions_name` ASC, `zip_codes_regions_countries_short_name` ASC),
-                    CONSTRAINT `fk_address_zip_codes1`
-                        FOREIGN KEY (`zip_codes_zip_code` , `zip_codes_regions_name` , `zip_codes_regions_countries_short_name`)
-                        REFERENCES `$wpdb->auction_zipcodes` (`zip_code` , `regions_name` , `regions_countries_short_name`)
-                        ON DELETE RESTRICT
-                        ON UPDATE NO ACTION
-                    ) ENGINE = InnoDB;
-                ";
-            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-            if (!dbDelta($sql)) {
-                return;
-            }
-        }
-
-        // TODO: Take a look at triggers. Delete an address if no one is using it (products or users)
-     
-        if (!isset($wpdb->auction_address)) {
-            $wpdb->auction_address = $address_table;
-            $wpdb->tables[] = str_replace($wpdb->prefix, '', $address_table);
-        }
-        /*-----  End of Address table  ------*/
+        require('users-extra.php');
+        require('auction_db.php');
     }
 
     public function settings_updated() {
@@ -843,15 +638,196 @@ class Auction {
         return $results !== false;
     }
 
-    public static function set_address($post_id, $address) {
+    public static function set_product_address($address, $post_id) {
+        global $wpdb;
+        /*
+            $address = array(
+                'street_name'   => <string>
+                'street_number' => <string>
+                'country'       => <string>
+                'region'        => <string>
+                'city'          => <string>
+                'zip_code'      => <string>
+            );
+        */
         // TODO save address for a product
     }
 
-    public static function get_addresses($user_id = false) {
+    public static function set_user_address($address, $user_id=false) {
+        global $wpdb;
+        /*
+            $address = array(
+                'street_name'   => <string>
+                'street_number' => <string>
+                'country'       => <string>
+                'region'        => <string>
+                'city'          => <string>
+                'zip_code'      => <string>
+            );
+        */
         if ($user_id === false) {
             $user_id = get_current_user_id();
         }
-        // TODO: Find all addresses for a user and his products
+
+        if (empty($address['zip_code']) ||
+            empty($address['region']) ||
+            empty($address['street_name']) ||
+            empty($address['street_number']) ||
+            empty($address['city'])) {
+            return false;
+        }
+
+        $result1 = $wpdb->query($wpdb->prepare(
+            "
+            INSERT IGNORE INTO $wpdb->auction_zipcodes
+            (zip_code, region_id, city)
+            VALUES (%s, %d, %s)
+            ", array(
+                $address['zip_code'],
+                $address['region'],
+                $address['city']
+            )
+        ));
+
+        $old_address = get_user_meta($user_id, self::ADDRESS_USER_META, false);
+
+        $address_in_use = $wpdb->get_var($wpdb->prepare(
+            "
+            SELECT COUNT(um.user_id) + COUNT(p.ID)
+            FROM $wpdb->auction_address a
+            LEFT JOIN $wpdb->usermeta um ON a.ID = um.meta_value AND um.meta_key = %s
+            LEFT JOIN $wpdb->postmeta pm ON a.ID = pm.meta_value AND pm.meta_key = %s
+            LEFT JOIN $wpdb->posts p ON pm.post_id = p.ID
+            WHERE p.post_author <> %d OR um.user_id <> %d
+            ", array(
+                self::ADDRESS_USER_META,
+                self::ADDRESS_USER_META,
+                $user_id,
+                $user_id
+            )
+        ));
+
+        $result2 = $wpdb->query($wpdb->prepare(
+            "
+            INSERT IGNORE INTO $wpdb->auction_address
+            (zip_code, region_id, street_name, street_number)
+            VALUES (%s, %d, %s, %s)
+            ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID)
+            ", array(
+                $address['zip_code'],
+                $address['region'],
+                $address['street_name'],
+                $address['street_number']
+            )
+        ));
+        $lastid = $wpdb->insert_id;
+        update_user_meta($user_id, self::ADDRESS_USER_META, $lastid);
+
+        /*=============================================================
+        =            Update all product addresses by owner            =
+        =============================================================*/
+        echo $wpdb->query($wpdb->prepare(
+            "
+            UPDATE $wpdb->postmeta pm
+            INNER JOIN $wpdb->posts p ON pm.post_id = p.ID
+            SET pm.meta_value = %d
+            WHERE pm.meta_key = %s AND p.post_author = %d AND pm.meta_value = %d
+            ", array(
+                $lastid,
+                self::ADDRESS_USER_META,
+                $user_id,
+                $old_address[0]
+            )
+        ));
+        /*-----  End of Update all product addresses by owner  ------*/
+
+        return $result1 && $result2;
+    }
+
+    public static function get_user_address($user_id=false) {
+        global $wpdb;
+
+        if ($user_id === false) {
+            $user_id = get_current_user_id();
+        }
+        $results = $wpdb->get_row($wpdb->prepare(
+            "
+            SELECT a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name AS country_short, c.name AS country
+            FROM $wpdb->users u
+            INNER JOIN $wpdb->usermeta um ON u.ID = um.user_id
+            INNER JOIN $wpdb->auction_address a ON um.meta_value = a.ID
+            INNER JOIN $wpdb->auction_zipcodes z ON a.zip_code = z.zip_code AND a.region_id = z.region_id
+            INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
+            INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
+            WHERE u.ID = %d AND um.meta_key = %s
+            ", $user_id, self::ADDRESS_USER_META
+        ));
+
+        return $results;
+    }
+
+    public static function get_product_addresses($user_id=false) {
+        global $wpdb;
+
+        if ($user_id === false) {
+            $user_id = get_current_user_id();
+        }
+        $results = $wpdb->get_results($wpdb->prepare(
+            "
+            SELECT DISTINCT p.ID, p.post_title AS name, a.street_name, a.street_number, z.zip_code, z.city, r.name AS region, c.short_name, c.name AS country
+            FROM $wpdb->posts p
+            INNER JOIN $wpdb->postmeta pm ON p.ID = pm.post_id
+            INNER JOIN $wpdb->auction_address a ON pm.meta_value = a.ID
+            INNER JOIN $wpdb->auction_zipcodes z ON a.zip_code = z.zip_code AND a.region_id = z.region_id
+            INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
+            INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
+            WHERE p.post_author = %d AND pm.meta_key = %s
+            ", $user_id, self::ADDRESS_USER_META
+        ));
+        return $results;
+    }
+
+    public static function get_countries() {
+        global $wpdb;
+
+        $results = $wpdb->get_results(
+            "
+            SELECT *
+            FROM $wpdb->auction_countries
+            ORDER BY name
+            "
+        );
+        return $results;
+    }
+
+    public static function get_regions($country) {
+        global $wpdb;
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "
+            SELECT *
+            FROM $wpdb->auction_regions
+            WHERE country = %s
+            ORDER BY name ASC
+            ", $country
+        ));
+        return $results;        
+    }
+
+    public function ajax_get_regions() {
+        if (!isset($_POST['country_short_name'])) {
+            echo "Missing guid";
+            throw new \RuntimeException("Missing country to find regions");
+        }
+        if(!check_ajax_referer(self::TOKEN_PREFIX.$_POST['country_short_name'], 'token', false)) {
+            _e('Unauthorized request.',self::DOMAIN);
+            throw new \RuntimeException("Nonce not valid");
+        }
+
+        $response = self::get_regions($_POST['country_short_name']);
+
+        echo json_encode($response);
+        die();
     }
 
     public function load_admin_dependencies() {
@@ -860,7 +836,9 @@ class Auction {
         wp_enqueue_script('auction-admin-functions', plugins_url( 'js/admin_functions.js' , __FILE__ ),array('jquery', 'jquery-ui-datepicker'),'1.0',true);
 
         $translation_array = array(
-            'date_format'  => self::DATE_FORMAT
+            'date_format'  => self::DATE_FORMAT,
+            'ajaxurl' => admin_url( 'admin-ajax.php' ),
+            'token' => wp_create_nonce(self::TOKEN_PREFIX)
         );
         wp_localize_script( 'auction-admin-functions', 'auction_admin', $translation_array );
     }

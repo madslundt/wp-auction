@@ -228,10 +228,17 @@ function auction_render_post_columns($column, $id) {
     global $post;
     switch ($column) 
 {        case 'type':
-            echo get_post_meta( $id, Auction::PRICE_POST_META, true) ? __('Lend', Auction::DOMAIN) . ' (' . get_post_meta( $id, Auction::PRICE_POST_META, true) . ')' : __('Lease', Auction::DOMAIN);
+            $type = get_post_meta( $id, Auction::PRICE_POST_META, true) ? __('Lend', Auction::DOMAIN) . ' (' . get_post_meta( $id, Auction::PRICE_POST_META, true) . ')' : __('Lease', Auction::DOMAIN);
+            echo '<a href="edit.php?post_type=' . Auction::CUSTOM_POST_TYPE . '&amp;type=' . strtolower($type) . '">' . $type . '</a>';
+            // TODO: Filter search results
             break;
         case 'active':
-            echo Auction::get_dates($id, true) ? __('Active', Auction::DOMAIN) : __('Not active', Auction::DOMAIN); // TODO: This needs to check if it is active between start and end date
+            if (Auction::get_dates($id, true)) {
+                echo '<a href="edit.php?post_type=' . Auction::CUSTOM_POST_TYPE . '&amp;active=1">' . __('Active', Auction::DOMAIN) . '</a>';
+            } else {
+                echo '<a href="edit.php?post_type=' . Auction::CUSTOM_POST_TYPE . '&amp;active=0">' . __('Not active', Auction::DOMAIN) . '</a>';
+            }
+
             break;
         case 'thumbnail':
             echo '<style>.fixed .column-comments{width: 9em !important;}</style>';
@@ -409,8 +416,51 @@ function dates_box_content($post) {
 
 function address_box_content($post) {
     // TODO: Dropdown with options to choose user address, previous addresses used on other products by the user or new address
-    echo 'TODO';
-    $adresses = Auction::get_addresses();
+    $product_addresses = Auction::get_product_addresses();
+    $user_address = Auction::get_user_address();
+    $countries = Auction::get_countries();
+    ?>
+    <div class="auction-address">
+        <div>
+            <select class="js-auction-preaddresses">
+                <option value="user"><?php _e('Use own address', Auction::DOMAIN); ?></option>
+                <?php foreach ($product_addresses as $address): ?>
+                    <option 
+                        data-street-name="<?php echo 'hehe' . $address->street_name; ?>" 
+                        data-street-number="<?php echo $address->street_number; ?>"
+                        data-zip-code="<?php echo $address->zip_code; ?>"
+                        data-city="<?php echo $address->city; ?>"
+                        data-region="<?php echo $address->region; ?>"
+                        data-country="<?php echo $address->country; ?>"
+                        data-short-country="<?php echo $address->short_name; ?>"
+                        value="<?php echo $address; ?>"><?php echo $address; ?></option>
+                <?php endforeach; ?>
+                <optgroup label="--------------"></optgroup>
+                <option value="custom"><?php _e('Enter new address..', Auction::DOMAIN); ?></option>
+            </select>
+        </div>
+        <div>
+            <select name="country" class="js-auction-country">
+                <?php foreach ($countries as $country): ?>
+                    <option value="<?php echo $country->short_name; ?>"<?php selected($country->name, $user_address->country); ?>><?php echo $country->name; ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label for="region"><?php _e('Region', Auction::DOMAIN); ?></label>
+            <select class="js-auction-region">
+                <option><?php _e('Choose region', Auction::DOMAIN); ?></option>
+            </select>
+        </div>
+
+        <label for="street"><?php _e('Street name and number', Auction::DOMAIN); ?></label>
+        <input type="text" name="street" />
+        <label for="street"><?php _e('Street name and number', Auction::DOMAIN); ?></label>
+        <input type="text" name="street" />
+        <label for="street"><?php _e('Street name and number', Auction::DOMAIN); ?></label>
+        <input type="text" name="street" />
+    </div>
+    <?php
 }
 
 function _location_admin_notices() {
