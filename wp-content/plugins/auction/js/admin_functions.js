@@ -72,11 +72,11 @@ jQuery(function($) {
         },
         dateListen: function() {
             $('.dates').on('focus', '.js-start-datepicker', function() {
-                this.setStartDatepicker($(this));
+                auction_admin_functions.setStartDatepicker($(this));
                 return false;
             });
             $('.dates').on('focus', '.js-end-datepicker', function() {
-                this.setEndDatepicker($(this));
+                auction_admin_functions.setEndDatepicker($(this));
                 return false;
             });
         },
@@ -88,8 +88,8 @@ jQuery(function($) {
 
                 $('.dates').append(dates);
                 $('.dates li .remove').css({'display': 'inline'});
-                this.setStartDatepicker(dates.children('.js-start-datepicker'));
-                this.setEndDatepicker(dates.children('.js-end-datepicker'));
+                auction_admin_functions.setStartDatepicker(dates.children('.js-start-datepicker'));
+                auction_admin_functions.setEndDatepicker(dates.children('.js-end-datepicker'));
                 return false;
             });
         },
@@ -106,8 +106,23 @@ jQuery(function($) {
         },
         selectAddress: function() {
             $('.auction-address .js-auction-preaddresses').change(function () {
-                var street_name = $(this).data('street-name');
-                console.log(street_name);
+                var selected = $(this).find(':selected');
+                var street_name = selected.data('street-name');
+                var street_number = selected.data('street-number');
+                var zip_code = selected.data('zip-code');
+                var city = selected.data('city');
+                var region = selected.data('region');
+                var country = selected.data('country');
+                var short_country = selected.data('country-short');
+
+                console.log(selected.data());
+
+                $(this).children('.js-auction-country').val(short_country);
+                $(this).children('.js-auction-region').val(region);
+                $(this).children('.js-auction-city').val(city);
+                $(this).children('.js-auction-zip-code').val(zip_code);
+                $(this).children('.js-auction-street-name').val(street_name);
+                $(this).children('.js-auction-street-number').val(street_number);
             });
         }
     };

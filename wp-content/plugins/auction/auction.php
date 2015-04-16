@@ -650,7 +650,32 @@ class Auction {
                 'zip_code'      => <string>
             );
         */
-        // TODO save address for a product
+        $wpdb->query($wpdb->prepare(
+            "
+            INSERT IGNORE INTO $wpdb->auction_zipcodes
+            (zip_code, region_id, city)
+            VALUES (%s, %d, %s)
+            ", array(
+                $address['zip_code'],
+                $address['region'],
+                $address['city']
+            )
+        ));
+        $wpdb->query($wpdb->prepare(
+            "
+            INSERT IGNORE INTO $wpdb->auction_address
+            (zip_code, region_id, street_name, street_number)
+            VALUES (%s, %d, %s, %s)
+            ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID)
+            ", array(
+                $address['zip_code'],
+                $address['region'],
+                $address['street_name'],
+                $address['street_number']
+            )
+        ));
+        $lastid = $wpdb->insert_id;
+        update_post_meta($post_id, self::ADDRESS_USER_META, $lastid);
     }
 
     public static function set_user_address($address, $user_id=false) {
@@ -782,6 +807,7 @@ class Auction {
             INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
             INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
             WHERE p.post_author = %d AND pm.meta_key = %s
+            GROUP BY a.ID
             ", $user_id, self::ADDRESS_USER_META
         ));
         return $results;

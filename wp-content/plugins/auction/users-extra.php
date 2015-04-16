@@ -5,6 +5,11 @@
         $address   = Auction::get_user_address();
         $countries = Auction::get_countries();
         $regions   = $address ? Auction::get_regions($address->country_short) : Auction::get_regions($countries[0]->short_name);
+
+        $city = isset($_POST['country']) ? $_POST['country'] : isset($address->city) ? $address->city : '';
+        $zip_code = isset($_POST['zip_code']) ? $_POST['zip_code'] : isset($address->zip_code) ? $address->zip_code : '';
+        $street_name = isset($_POST['street_name']) ? $_POST['street_name'] : isset($address->street_name) ? $address->street_name : '';
+        $street_number = isset($_POST['street_number']) ? $_POST['street_number'] : isset($address->street_number) ? $address->street_number : '';
 ?>
         <h3><?php _e("Address", Auction::DOMAIN); ?></h3>
         <table class="form-table">
@@ -28,25 +33,25 @@
                     </select>
                 </td>
             </tr>
-            <tr class="user-auction-city-wrap">
-                <th><label for="city"><?php _e('City', Auction::DOMAIN); ?></label></th>
-                <td>
-                    <input type="text" name="city" id="city" value="<?php echo isset($_POST['country']) ? $_POST['country'] : $address->city; ?>" maxlength="100" class="regular-text" /><br />
-                    <span class="description"><?php _e('Please enter your city.', Auction::DOMAIN); ?></span><br />
-                    <div>
-                        <input type="text" name="zip_code" id="zip_code" maxlength="15" value="<?php echo isset($_POST['zip_code']) ? $_POST['zip_code'] : $address->zip_code; ?>" /><br />
-                        <span class="description"><?php _e('Please enter your zip code.', Auction::DOMAIN); ?></span>
-                    </div>
-                </td>
-            </tr>
             <tr class="user-auction-streetname-wrap">
                 <th><label for="street_name"><?php _e('Street', Auction::DOMAIN); ?></label></th>
                 <td>
-                    <input type="text" name="street_name" id="street_name" maxlength="100" value="<?php echo isset($_POST['street_name']) ? $_POST['street_name'] : $address->street_name; ?>" class="regular-text" /><br />
+                    <input type="text" name="street_name" id="street_name" maxlength="100" value="<?php echo $street_name; ?>" class="regular-text" /><br />
                     <span class="description"><?php _e('Please enter your street name.', Auction::DOMAIN); ?></span><br />
                     <div>
-                        <input type="text" name="street_number" id="street_number" maxlength="20" value="<?php echo isset($_POST['street_number']) ? $_POST['street_number'] : $address->street_number; ?>" /><br />
+                        <input type="text" name="street_number" id="street_number" maxlength="20" value="<?php echo $street_number; ?>" /><br />
                         <span class="description"><?php _e('Please enter your street number.', Auction::DOMAIN); ?></span>
+                    </div>
+                </td>
+            </tr>
+            <tr class="user-auction-city-wrap">
+                <th><label for="city"><?php _e('City', Auction::DOMAIN); ?></label></th>
+                <td>
+                    <input type="text" name="city" id="city" value="<?php echo $city; ?>" maxlength="100" class="regular-text" /><br />
+                    <span class="description"><?php _e('Please enter your city.', Auction::DOMAIN); ?></span><br />
+                    <div>
+                        <input type="text" name="zip_code" id="zip_code" maxlength="15" value="<?php echo $zip_code; ?>" /><br />
+                        <span class="description"><?php _e('Please enter your zip code.', Auction::DOMAIN); ?></span>
                     </div>
                 </td>
             </tr>
