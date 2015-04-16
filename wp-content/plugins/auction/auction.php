@@ -808,9 +808,10 @@ class Auction {
             INNER JOIN $wpdb->auction_zipcodes z ON a.zip_code = z.zip_code AND a.region_id = z.region_id
             INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
             INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
-            WHERE p.post_author = %d AND pm.meta_key = %s
+            INNER JOIN $wpdb->usermeta um ON p.post_author = um.user_id
+            WHERE p.post_author = %d AND pm.meta_key = %s AND um.meta_key = %s AND um.meta_value <> pm.meta_value
             GROUP BY a.ID
-            ", $user_id, self::ADDRESS_USER_META
+            ", $user_id, self::ADDRESS_USER_META, self::ADDRESS_USER_META
         ));
         return $results;
     }

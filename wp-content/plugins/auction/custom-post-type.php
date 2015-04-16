@@ -455,8 +455,8 @@ function dates_box_content($post) {
 
 function address_box_content($post) {
     wp_nonce_field( plugin_basename(__FILE__), 'address' );
-    $product_addresses = Auction::get_product_addresses();
     $user_address = Auction::get_user_address();
+    $product_addresses = Auction::get_product_addresses();
     $countries = Auction::get_countries();
     $set_region = true;
     $is_new = get_post_meta($post->ID, Auction::ADDRESS_USER_META, true);
