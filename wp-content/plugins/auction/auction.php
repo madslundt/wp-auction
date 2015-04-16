@@ -676,6 +676,8 @@ class Auction {
         ));
         $lastid = $wpdb->insert_id;
         update_post_meta($post_id, self::ADDRESS_USER_META, $lastid);
+
+        return true;
     }
 
     public static function set_user_address($address, $user_id=false) {
@@ -799,7 +801,7 @@ class Auction {
         }
         $results = $wpdb->get_results($wpdb->prepare(
             "
-            SELECT DISTINCT p.ID, p.post_title AS name, a.street_name, a.street_number, z.zip_code, z.city, r.name AS region, c.short_name, c.name AS country
+            SELECT DISTINCT p.ID, p.post_title AS name, a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name, c.name AS country
             FROM $wpdb->posts p
             INNER JOIN $wpdb->postmeta pm ON p.ID = pm.post_id
             INNER JOIN $wpdb->auction_address a ON pm.meta_value = a.ID
@@ -845,7 +847,7 @@ class Auction {
             echo "Missing guid";
             throw new \RuntimeException("Missing country to find regions");
         }
-        if(!check_ajax_referer(self::TOKEN_PREFIX.$_POST['country_short_name'], 'token', false)) {
+        if(!check_ajax_referer(self::TOKEN_PREFIX, 'token', false)) {
             _e('Unauthorized request.',self::DOMAIN);
             throw new \RuntimeException("Nonce not valid");
         }

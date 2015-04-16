@@ -267,7 +267,7 @@ function custom_meta_box() {
     );
     add_meta_box( 
         'address', 
-        __('Address'), 
+        __('Address', Auction::DOMAIN), 
         'address_box_content', 
         Auction::CUSTOM_POST_TYPE,
         'side',
@@ -278,12 +278,14 @@ add_action( 'add_meta_boxes', 'custom_meta_box' );
 
 function save_custom_fields($post_id) {
     /*if (!isset($_POST['start_price'])) return $post_id;
-        if ( !wp_verify_nonce( $_POST['start_price'], plugin_basename(__FILE__) ) )
-            return $post_id;
+    if ( !wp_verify_nonce( $_POST['start_price'], plugin_basename(__FILE__) ) )
+        return $post_id;
     if (!isset($_POST['end_date'])) return $post_id;
-        if ( !wp_verify_nonce( $_POST['end_date'], plugin_basename(__FILE__) ) )
-            return $post_id;
-    */
+    if ( !wp_verify_nonce( $_POST['end_date'], plugin_basename(__FILE__) ) )
+        return $post_id;
+    if (!isset($_POST['address'])) return $post_id;
+    if ( !wp_verify_nonce( $_POST['address'], plugin_basename(__FILE__) ) )
+        return $post_id;*/
 
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
       return $post_id;
@@ -302,6 +304,8 @@ function save_custom_fields($post_id) {
         }
         if ($_POST['price'] > 0) {
             update_post_meta($post_id, Auction::PRICE_POST_META, $_POST['price']);
+        } else {
+            delete_post_meta($post_id, Auction::PRICE_POST_META);
         }
     }
 
@@ -369,8 +373,42 @@ function save_custom_fields($post_id) {
         set_transient( 'settings_errors', get_settings_errors(), 30 );
         return false;
     }
+
+    if (empty($_POST['country']) ||
+        empty($_POST['region']) ||
+        empty($_POST['street-name']) ||
+        empty($_POST['street-number']) ||
+        empty($_POST['city']) ||
+        empty($_POST['zip-code'])) {
+        add_settings_error(
+            'address',
+            '',
+            __('Invalid address', Auction::DOMAIN),
+            'error'
+        );
+        set_transient( 'settings_errors', get_settings_errors(), 30 );
+        return false;
+    } else {
+        $address = array(
+            'country' => $_POST['country'],
+            'region' => $_POST['region'],
+            'street_name' => $_POST['street-name'],
+            'street_number' => $_POST['street-number'],
+            'city' => $_POST['city'],
+            'zip_code' => $_POST['zip-code']
+        );
+        if (!Auction::set_product_address($address, $post_id)) {
+            add_settings_error(
+                'address',
+                '',
+                __('Invalid address', Auction::DOMAIN),
+                'error'
+            );
+            set_transient( 'settings_errors', get_settings_errors(), 30 );
+            return false;
+        }
+    }
     // TODO: Save address to a city, zip code, region etc.
-    // Auction::set_product_address()
 }
 add_action('save_post_' . Auction::CUSTOM_POST_TYPE, 'save_custom_fields');
 
@@ -394,8 +432,8 @@ function dates_box_content($post) {
             $end_date   = date_format(date_create_from_format('Y-m-d', $date->end), Auction::DATE_FORMAT_PHP);
         ?>
             <li>
-                <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="<?php echo $start_date; ?>" />
-                <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="<?php echo $end_date; ?>" />
+                <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="<?php echo $start_date; ?>" placeholder="<?php _e('Start date', Auction::DOMAIN); ?>"/>
+                <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="<?php echo $end_date; ?>" placeholder="<?php _e('End date', Auction::DOMAIN); ?>"/>
                 <a class="remove" href="#"<?php if (count($dates) === 1): ?> style="display: none;"<?php endif; ?>>&times;</a>
             </li>
         <?php
@@ -403,8 +441,8 @@ function dates_box_content($post) {
     else:
     ?>
         <li>
-            <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="" />
-            <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="" />
+            <input type="datetime" name="start_dates[]" class="date-input js-start-datepicker" value="" placeholder="<?php _e('Start date', Auction::DOMAIN); ?>"/>
+            <input type="datetime" name="end_dates[]" class="date-input js-end-datepicker" value="" placeholder="<?php _e('End date', Auction::DOMAIN); ?>"/>
             <a class="remove" href="#" style="display: none;">&times;</a>
         </li>
     <?php
@@ -416,70 +454,100 @@ function dates_box_content($post) {
 }
 
 function address_box_content($post) {
-    // TODO: Dropdown with options to choose user address, previous addresses used on other products by the user or new address
+    wp_nonce_field( plugin_basename(__FILE__), 'address' );
     $product_addresses = Auction::get_product_addresses();
     $user_address = Auction::get_user_address();
     $countries = Auction::get_countries();
-    $regions = Auction::get_regions($user_address->country_short);
+    $set_region = true;
+    $is_new = get_post_meta($post->ID, Auction::ADDRESS_USER_META, true);
+    $is_new = empty($is_new);
 
-    $_country        = isset($_POST['country']) ? $_POST['country'] : $user_address->country;
-    $_region         = isset($_POST['region']) ? $_POST['region'] : $user_address->region_id;
-    $_street_name    = isset($_POST['street_name']) ? $_POST['street_name'] : $user_address->street_name;
-    $_street_number  = isset($_POST['street_number']) ? $_POST['street_number'] : $user_address->street_number;
-    $_city           = isset($_POST['city']) ? $_POST['city'] : $user_address->city;
-    $_zip_code       = isset($_POST['zip_code']) ? $_POST['zip_code'] : $user_address->zip_code;
-
+    $user_country       = isset($user_address) ? $user_address->country_short : '';
+    $user_region        = isset($user_address) ? $user_address->region_id : '';
+    $user_street_name   = isset($user_address) ? $user_address->street_name : '';
+    $user_street_number = isset($user_address) ? $user_address->street_number : '';
+    $user_city          = isset($user_address) ? $user_address->city : '';
+    $user_zip_code      = isset($user_address) ? $user_address->zip_code : '';
     ?>
     <div class="auction-address">
         <div>
             <select class="js-auction-preaddresses">
-                <option data-street-name="<?php echo $user_address->street_name; ?>" 
-                        data-street-number="<?php echo $user_address->street_number; ?>"
-                        data-zip-code="<?php echo $user_address->zip_code; ?>"
-                        data-city="<?php echo $user_address->city; ?>"
-                        data-region="<?php echo $user_address->region; ?>"
-                        data-country="<?php echo $user_address->country; ?>"
-                        data-country-short="<?php echo $user_address->country_short; ?>"
-                        value="user"><?php _e('Use own address', Auction::DOMAIN); ?></option>
+                <option data-street-name="<?php echo $user_street_name; ?>" 
+                        data-street-number="<?php echo $user_street_number; ?>"
+                        data-zip-code="<?php echo $user_zip_code; ?>"
+                        data-city="<?php echo $user_city; ?>"
+                        data-region="<?php echo $user_region; ?>"
+                        data-country="<?php echo $user_country; ?>"
+                        value="user">
+                            <?php _e('Use own address', Auction::DOMAIN); ?>
+                        </option>
                 <?php foreach ($product_addresses as $address): ?>
-                    <option 
+                    <option
                         data-street-name="<?php echo $address->street_name; ?>" 
                         data-street-number="<?php echo $address->street_number; ?>"
                         data-zip-code="<?php echo $address->zip_code; ?>"
                         data-city="<?php echo $address->city; ?>"
-                        data-region="<?php echo $address->region; ?>"
-                        data-country="<?php echo $address->country; ?>"
-                        data-country-short="<?php echo $address->short_name; ?>"
-                        value="<?php echo $address->ID; ?>"><?php printf('%s: %s %s', $address->name, $address->street_name, $address->street_number); ?></option>
+                        data-region="<?php echo $address->region_id; ?>"
+                        data-country="<?php echo $address->short_name; ?>"
+                        value="<?php echo $address->ID; ?>" <?php selected($post->ID, $address->ID); ?>>
+                            <?php printf('%s: %s %s', $address->name, $address->street_name, $address->street_number); ?>
+                        </option>
+                        <?php
+                        if ($post->ID === $address->ID) {
+                            $set_region = false;
+                            $user_country = $address->short_name;
+                            $user_region  = $address->region_id;
+                            $user_street_name = $address->street_name;
+                            $user_street_number = $address->street_number;
+                            $user_city = $address->city;
+                            $user_zip_code = $address->zip_code;
+                        }
+                        ?>
                 <?php endforeach; ?>
                 <optgroup label="--------------"></optgroup>
-                <option value="custom"><?php _e('Enter new address..', Auction::DOMAIN); ?></option>
+                <option data-street-name="<?php echo isset($_POST['street-name']) ? $_POST['street-name'] : ''; ?>" 
+                        data-street-number="<?php echo isset($_POST['street-number']) ? $_POST['street-number'] : ''; ?>"
+                        data-zip-code="<?php echo isset($_POST['zip-code']) ? $_POST['zip-code'] : ''; ?>"
+                        data-city="<?php echo isset($_POST['city']) ? $_POST['city'] : ''; ?>"
+                        data-region="<?php echo isset($_POST['region']) ? $_POST['region'] : ''; ?>"
+                        data-country="<?php echo isset($_POST['country']) ? $_POST['country'] : ''; ?>"
+                        value="custom" <?php selected($set_region && !$is_new, true); ?>>
+                            <?php _e('Enter new address..', Auction::DOMAIN); ?>
+                        </option>
             </select>
         </div>
         <div>
+            <label for="country"><?php _e('Country', Auction::DOMAIN); ?>
             <select name="country" class="js-auction-country">
                 <?php foreach ($countries as $country): ?>
-                    <option value="<?php echo $country->short_name; ?>"<?php selected($country->name, $_country); ?>><?php echo $country->name; ?></option>
+                    <option value="<?php echo $country->short_name; ?>"<?php selected($country->short_name, $user_country); ?>><?php echo $country->name; ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div>
+            <?php 
+            if ($set_region) {
+                $regions = Auction::get_regions(isset($user_address) ? $user_address->country_short : $countries[0]->short_name);
+            } else {
+                $regions = Auction::get_regions($user_country);
+            }
+            ?>
             <label for="region"><?php _e('Region', Auction::DOMAIN); ?></label>
-            <select class="js-auction-region">
+            <select name="region" class="js-auction-region">
                 <?php foreach ($regions as $region): ?>
-                    <option value="<?php echo $region->ID; ?>"<?php selected($region->ID, $_region); ?>><?php echo $region->name; ?></option>
+                    <option value="<?php echo $region->ID; ?>"<?php selected($region->ID, $user_region); ?>><?php echo $region->name; ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
 
         <label for="street-name"><?php _e('Street name', Auction::DOMAIN); ?></label><br />
-        <input type="text" name="street-name" class="js-auction-street-name" value="<?php echo $_street_name; ?>" required /><br />
+        <input type="text" name="street-name" class="js-auction-street-name" value="<?php echo $user_street_name; ?>" /><br />
         <label for="street-number"><?php _e('Street number', Auction::DOMAIN); ?></label><br />
-        <input type="text" name="street-number" class="js-auction-street-number" value="<?php echo $_street_number; ?>" required /><br />
+        <input type="text" name="street-number" class="js-auction-street-number" value="<?php echo $user_street_number; ?>" /><br />
         <label for="city"><?php _e('City', Auction::DOMAIN); ?></label><br />
-        <input type="text" name="city" class="js-auction-city" value="<?php echo $_city; ?>" required /><br />
+        <input type="text" name="city" class="js-auction-city" value="<?php echo $user_city; ?>" /><br />
         <label for="zip-code"><?php _e('Zip code', Auction::DOMAIN); ?></label><br />
-        <input type="text" name="zip-code" class="js-auction-zip-code" value="<?php echo $_zip_code; ?>" required /><br />
+        <input type="text" name="zip-code" class="js-auction-zip-code" value="<?php echo $user_zip_code; ?>" /><br />
     </div>
     <?php
 }

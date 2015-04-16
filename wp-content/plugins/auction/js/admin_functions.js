@@ -15,7 +15,7 @@ jQuery(function($) {
                 data: {
                     action: 'auction_get_regions',
                     token: auction_admin.token,
-                    country: country_short_name
+                    country_short_name: country_short_name
                 },
                 dataType: 'JSON',
                 type: 'POST',
@@ -36,8 +36,7 @@ jQuery(function($) {
         },
         countryListen: function() {
             $('.js-auction-country').change(function () {
-                console.log('change');
-                setRegions($(this).val());
+                auction_admin_functions.setRegions($(this).val());
             });
         },
         setStartDatepicker: function(dp) {
@@ -107,22 +106,32 @@ jQuery(function($) {
         selectAddress: function() {
             $('.auction-address .js-auction-preaddresses').change(function () {
                 var selected = $(this).find(':selected');
+                
                 var street_name = selected.data('street-name');
                 var street_number = selected.data('street-number');
                 var zip_code = selected.data('zip-code');
                 var city = selected.data('city');
                 var region = selected.data('region');
                 var country = selected.data('country');
-                var short_country = selected.data('country-short');
 
-                console.log(selected.data());
-
-                $(this).children('.js-auction-country').val(short_country);
-                $(this).children('.js-auction-region').val(region);
-                $(this).children('.js-auction-city').val(city);
-                $(this).children('.js-auction-zip-code').val(zip_code);
-                $(this).children('.js-auction-street-name').val(street_name);
-                $(this).children('.js-auction-street-number').val(street_number);
+                if (country) {
+                    $('.auction-address .js-auction-country').val(country);
+                } else {
+                    $('.auction-address .js-auction-country').val(
+                        $('.auction-address .js-auction-country option:first-child').val()
+                    );
+                }
+                if (region) {
+                    $('.auction-address .js-auction-region').val(region);
+                } else {
+                    $('.auction-address .js-auction-region').val(
+                        $('.auction-address .js-auction-region option:first-child').val()
+                    );
+                }
+                $('.auction-address .js-auction-city').val(city);
+                $('.auction-address .js-auction-zip-code').val(zip_code);
+                $('.auction-address .js-auction-street-name').val(street_name);
+                $('.auction-address .js-auction-street-number').val(street_number);
             });
         }
     };
