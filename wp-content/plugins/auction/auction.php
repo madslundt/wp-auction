@@ -704,7 +704,7 @@ class Auction {
             return false;
         }
 
-        $result1 = $wpdb->query($wpdb->prepare(
+        $wpdb->query($wpdb->prepare(
             "
             INSERT IGNORE INTO $wpdb->auction_zipcodes
             (zip_code, region_id, city)
@@ -716,7 +716,7 @@ class Auction {
             )
         ));
 
-        $old_address = get_user_meta($user_id, self::ADDRESS_USER_META, false);
+        $old_address = get_user_meta($user_id, self::ADDRESS_USER_META, true);
 
         $address_in_use = $wpdb->get_var($wpdb->prepare(
             "
@@ -733,42 +733,62 @@ class Auction {
                 $user_id
             )
         ));
+        // If address is in use by another user or product, we have to insert a new address.
+        if ($address_in_use) {
+            $wpdb->query($wpdb->prepare(
+                "
+                INSERT INTO $wpdb->auction_address
+                (zip_code, region_id, street_name, street_number)
+                VALUES (%s, %d, %s, %s)
+                ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID)
+                ", array(
+                    $address['zip_code'],
+                    $address['region'],
+                    $address['street_name'],
+                    $address['street_number']
+                )
+            ));
+            $lastid = $wpdb->insert_id;
+            update_user_meta($user_id, self::ADDRESS_USER_META, $lastid);
 
-        $result2 = $wpdb->query($wpdb->prepare(
-            "
-            INSERT IGNORE INTO $wpdb->auction_address
-            (zip_code, region_id, street_name, street_number)
-            VALUES (%s, %d, %s, %s)
-            ON DUPLICATE KEY UPDATE ID=LAST_INSERT_ID(ID)
-            ", array(
-                $address['zip_code'],
-                $address['region'],
-                $address['street_name'],
-                $address['street_number']
-            )
-        ));
-        $lastid = $wpdb->insert_id;
-        update_user_meta($user_id, self::ADDRESS_USER_META, $lastid);
+            /*=============================================================
+            =  Update all product addresses (with own address) by owner   =
+            =============================================================*/
+            $wpdb->query($wpdb->prepare(
+                "
+                UPDATE wp_postmeta pm
+                SET pm.meta_value = %d
+                WHERE pm.post_id IN (
+                    SELECT p.ID
+                    FROM wp_posts p 
+                    WHERE p.post_author = %d AND pm.post_id = p.ID
+                ) AND pm.meta_key = %s AND pm.meta_value = %d
+                ", array(
+                    $lastid,
+                    $user_id,
+                    self::ADDRESS_USER_META,
+                    $old_address
+                )
+            ));
+            /*-----  End of Update all product addresses by owner  ------*/
 
-        /*=============================================================
-        =            Update all product addresses by owner            =
-        =============================================================*/
-        echo $wpdb->query($wpdb->prepare(
-            "
-            UPDATE $wpdb->postmeta pm
-            INNER JOIN $wpdb->posts p ON pm.post_id = p.ID
-            SET pm.meta_value = %d
-            WHERE pm.meta_key = %s AND p.post_author = %d AND pm.meta_value = %d
-            ", array(
-                $lastid,
-                self::ADDRESS_USER_META,
-                $user_id,
-                $old_address[0]
-            )
-        ));
-        /*-----  End of Update all product addresses by owner  ------*/
+        } else { // If the old address is not in use, we just have to update it and the products will follow.
+            $wpdb->query($wpdb->prepare(
+                "
+                UPDATE $wpdb->auction_address
+                SET zip_code=%s, region_id=%d, street_name=%s, street_number=%s
+                WHERE ID=%d
+                ", array(
+                    $address['zip_code'],
+                    $address['region'],
+                    $address['street_name'],
+                    $address['street_number'],
+                    $old_address
+                )
+            ));
+        }
 
-        return $result1 && $result2;
+        return true;
     }
 
     public static function get_user_address($user_id=false) {
@@ -779,7 +799,7 @@ class Auction {
         }
         $results = $wpdb->get_row($wpdb->prepare(
             "
-            SELECT a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name AS country_short, c.name AS country
+            SELECT a.ID, a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name AS country_short, c.name AS country
             FROM $wpdb->users u
             INNER JOIN $wpdb->usermeta um ON u.ID = um.user_id
             INNER JOIN $wpdb->auction_address a ON um.meta_value = a.ID
@@ -793,6 +813,23 @@ class Auction {
         return $results;
     }
 
+    public static function get_address($id) {
+        global $wpdb;
+
+        $results = $wpdb->get_row($wpdb->prepare(
+            "
+            SELECT a.ID, a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name AS country_short, c.name AS country
+            FROM $wpdb->auction_address a
+            INNER JOIN $wpdb->auction_zipcodes z ON a.zip_code = z.zip_code AND a.region_id = z.region_id
+            INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
+            INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
+            WHERE a.ID = %d
+            ", $id
+        ));
+
+        return $results;
+    }
+
     public static function get_product_addresses($user_id=false) {
         global $wpdb;
 
@@ -801,7 +838,7 @@ class Auction {
         }
         $results = $wpdb->get_results($wpdb->prepare(
             "
-            SELECT DISTINCT p.ID, p.post_title AS name, a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name, c.name AS country
+            SELECT DISTINCT p.ID AS post_id, p.post_title AS name, a.ID, a.street_name, a.street_number, z.zip_code, z.city, r.ID AS region_id, r.name AS region, c.short_name, c.name AS country
             FROM $wpdb->posts p
             INNER JOIN $wpdb->postmeta pm ON p.ID = pm.post_id
             INNER JOIN $wpdb->auction_address a ON pm.meta_value = a.ID

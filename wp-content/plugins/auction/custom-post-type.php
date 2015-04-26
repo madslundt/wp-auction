@@ -459,8 +459,8 @@ function address_box_content($post) {
     $product_addresses = Auction::get_product_addresses();
     $countries = Auction::get_countries();
     $set_region = true;
-    $is_new = get_post_meta($post->ID, Auction::ADDRESS_USER_META, true);
-    $is_new = empty($is_new);
+    $post_address = get_post_meta($post->ID, Auction::ADDRESS_USER_META, true);
+    $is_new = empty($post_address);
 
     $user_country       = isset($user_address) ? $user_address->country_short : '';
     $user_region        = isset($user_address) ? $user_address->region_id : '';
@@ -468,6 +468,7 @@ function address_box_content($post) {
     $user_street_number = isset($user_address) ? $user_address->street_number : '';
     $user_city          = isset($user_address) ? $user_address->city : '';
     $user_zip_code      = isset($user_address) ? $user_address->zip_code : '';
+    $user_address_id    = isset($user_address) ? $user_address->ID : '';
     ?>
     <div class="auction-address">
         <div>
@@ -478,9 +479,9 @@ function address_box_content($post) {
                         data-city="<?php echo $user_city; ?>"
                         data-region="<?php echo $user_region; ?>"
                         data-country="<?php echo $user_country; ?>"
-                        value="user">
+                        value="user" <?php selected($user_address_id, $post_address); ?>>
                             <?php _e('Use own address', Auction::DOMAIN); ?>
-                        </option>
+                </option>
                 <?php foreach ($product_addresses as $address): ?>
                     <option
                         data-street-name="<?php echo $address->street_name; ?>" 
@@ -489,11 +490,11 @@ function address_box_content($post) {
                         data-city="<?php echo $address->city; ?>"
                         data-region="<?php echo $address->region_id; ?>"
                         data-country="<?php echo $address->short_name; ?>"
-                        value="<?php echo $address->ID; ?>" <?php selected($post->ID, $address->ID); ?>>
+                        value="<?php echo $address->ID; ?>" <?php selected($post_address, $address->ID); ?>>
                             <?php printf('%s: %s %s', $address->name, $address->street_name, $address->street_number); ?>
-                        </option>
+                    </option>
                         <?php
-                        if ($post->ID === $address->ID) {
+                        if ($post_address == $address->ID) {
                             $set_region = false;
                             $user_country = $address->short_name;
                             $user_region  = $address->region_id;
@@ -511,9 +512,20 @@ function address_box_content($post) {
                         data-city="<?php echo isset($_POST['city']) ? $_POST['city'] : ''; ?>"
                         data-region="<?php echo isset($_POST['region']) ? $_POST['region'] : ''; ?>"
                         data-country="<?php echo isset($_POST['country']) ? $_POST['country'] : ''; ?>"
-                        value="custom" <?php selected($set_region && !$is_new, true); ?>>
+                        value="custom" <?php selected($set_region && !$is_new && $user_address_id == $post_address, true); ?>>
                             <?php _e('Enter new address..', Auction::DOMAIN); ?>
-                        </option>
+                </option>
+                <?php 
+                    if ($set_region && !$is_new && $user_address_id != $post_address) {
+                        $address = Auction::get_address($post_address);
+                        $user_country = $address->short_name;
+                        $user_region  = $address->region_id;
+                        $user_street_name = $address->street_name;
+                        $user_street_number = $address->street_number;
+                        $user_city = $address->city;
+                        $user_zip_code = $address->zip_code;
+                    }
+                ?>
             </select>
         </div>
         <div>
