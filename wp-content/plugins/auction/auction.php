@@ -35,6 +35,8 @@ class Auction {
     const ADDRESS_USER_META      = 'auction_address';
     const PRICE_POST_META        = 'auction_price';
 
+    const EDIT_CAPABILITY = 'create_users';
+
     public static $search_results;
     public static $search_query_variables = array();
 
@@ -534,6 +536,22 @@ class Auction {
         }
     }
 
+    public static function getGallery($post_id) {
+        $attachment_ids = explode( ',', get_post_meta( $post_id, '_easy_image_gallery', true ));
+        $images = array();
+        if ($attachment_ids && (count($attachment_ids) > 0 && strlen($attachment_ids[0]) > 0)) {
+            foreach ($attachment_ids as $attachment_id) {
+                $image = wp_get_attachment_image_src( $attachment_id, apply_filters( 'easy_image_gallery_thumbnail_image_size', 'thumbnail' ), '', array( 'alt' => trim( strip_tags( get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ) ) ) );
+                $images[] = $image;
+            }
+
+        } else {
+            $images[] = plugins_url('img/no-img.jpg');
+        }
+
+        return $images;
+    }
+
     public static function create_search_form($freetext_placeholder = "") {
         $placeholder = $freetext_placeholder;
         if(get_option(self::SEARCH_PAGE)) {
@@ -603,6 +621,16 @@ class Auction {
         return $results;
     }
 
+    /**
+     * set_dates
+     * Set start and end dates for a product
+     * 
+     * @param integer $post_id
+     * @param array() $start_dates
+     * @param array() $end_dates
+     *
+     * @return boolean
+     */
     public static function set_dates($post_id, $start_dates, $end_dates) {
         global $wpdb;
         if (count($start_dates) != count($end_dates) && count($start_dates) > 0) {
@@ -635,9 +663,25 @@ class Auction {
                 " . implode($remove, ' AND ')
             );
         }
-        return $results !== false;
+        return $results;
     }
 
+    /**
+     * set_product_address
+     * Updates a product address
+     * 
+     * @param array()   $address array(
+     *                                  street_name   => string
+     *                                  street_number => string
+     *                                  country       => string
+     *                                  region        => string
+     *                                  city          => string
+     *                                  zip_code      => string    
+     *                                )
+     * @param integer   $post_id
+     * 
+     * @return boolean
+     */
     public static function set_product_address($address, $post_id) {
         global $wpdb;
         /*
@@ -680,6 +724,23 @@ class Auction {
         return true;
     }
 
+    /**
+     * set_user_address
+     * Set user address and updates the user's products that has the same address as the user.
+     * Also makes sure to update or insert new address depending on other products for the same address.
+     * 
+     * @param array()   $address array(
+     *                                  street_name   => string
+     *                                  street_number => string
+     *                                  country       => string
+     *                                  region        => string
+     *                                  city          => string
+     *                                  zip_code      => string    
+     *                                )
+     * @param integer   $user_id (current user ID)
+     * 
+     * @return boolean
+     */
     public static function set_user_address($address, $user_id=false) {
         global $wpdb;
         /*
@@ -791,6 +852,14 @@ class Auction {
         return true;
     }
 
+    /**
+     * get_user_address
+     * Get the address for a user
+     * 
+     * @param  integer  $user_id (current user ID)
+     * 
+     * @return array()  Address details
+     */
     public static function get_user_address($user_id=false) {
         global $wpdb;
 
@@ -813,7 +882,15 @@ class Auction {
         return $results;
     }
 
-    public static function get_address($id) {
+    /**
+     * get_address
+     * Look up an address by ID
+     * 
+     * @param  integer  $address_id
+     * 
+     * @return array()  Address details
+     */
+    public static function get_address($address_id) {
         global $wpdb;
 
         $results = $wpdb->get_row($wpdb->prepare(
@@ -824,12 +901,20 @@ class Auction {
             INNER JOIN $wpdb->auction_regions r ON z.region_id = r.ID
             INNER JOIN $wpdb->auction_countries c ON r.country = c.short_name
             WHERE a.ID = %d
-            ", $id
+            ", $address_id
         ));
 
         return $results;
     }
 
+    /**
+     * get_product_addresses
+     * Get all product addresses (distinct) owned by a selected user
+     * 
+     * @param  integer  $user_id (current user ID)
+     * 
+     * @return array()  Address and product details
+     */
     public static function get_product_addresses($user_id=false) {
         global $wpdb;
 
@@ -853,6 +938,12 @@ class Auction {
         return $results;
     }
 
+    /**
+     * get_countries
+     * Get all countries in the database
+     * 
+     * @return array() Countries
+     */
     public static function get_countries() {
         global $wpdb;
 
@@ -866,6 +957,14 @@ class Auction {
         return $results;
     }
 
+    /**
+     * get_regions
+     * Get regions from a selected country
+     * 
+     * @param  string   $country
+     * 
+     * @return array()  Region details
+     */
     public static function get_regions($country) {
         global $wpdb;
 
@@ -880,6 +979,120 @@ class Auction {
         return $results;        
     }
 
+    /**
+     * get_products_by_start_date
+     * Get products ordered by start date
+     * 
+     * @param  integer  $limit          Max number of products to be returned (10)
+     * @param  string   $sort           If the sorting should be ascending (ASC) or descending (DESC) (ASC)
+     * @param  string   $date           What date the post should be active between (NOW())
+     * @param  integer  $offset         Offset for the query (0)
+     * @param  string   $post_status    Requirements to the post_status (publish)
+     * 
+     * @return array()  Product (post) details
+     */
+    public static function get_products_by_start_date($limit=10, $sort='ASC', $date='NOW()', $offset=0, $post_status='publish') {
+        global $wpdb;
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "
+            SELECT p.*
+            FROM $wpdb->posts p
+            INNER JOIN $wpdb->auction_dates d ON p.ID = d.post_id
+            WHERE p.post_type = %s AND %s BETWEEN d.start AND d.end AND p.post_status = %s
+            ORDER BY d.start %s
+            LIMIT %d, %d
+            ", array(
+                self::CUSTOM_POST_TYPE,
+                $date,
+                $post_status,
+                $sort,
+                $limit,
+                $offset
+            )
+        ));
+
+        return $results;
+    }
+
+    /**
+     * get_products_by_end_date
+     * Get products ordered by end date
+     * 
+     * @param  integer  $limit          Max number of products to be returned (10)
+     * @param  string   $sort           If the sorting should be ascending (ASC) or descending (DESC) (ASC)
+     * @param  string   $date           What date the post should be active between (NOW())
+     * @param  integer  $offset         Offset for the query (0)
+     * @param  string   $post_status    Requirements to the post_status (publish)
+     * 
+     * @return array()  Product (post) details
+     */
+    public static function get_products_by_end_date($limit=10, $sort='ASC', $date='NOW()', $offset=0, $post_status='publish') {
+        global $wpdb;
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "
+            SELECT p.*
+            FROM $wpdb->posts p
+            INNER JOIN $wpdb->auction_dates d ON p.ID = d.post_id
+            WHERE p.post_type = %s AND %s BETWEEN d.start AND d.end AND p.post_status = %s
+            ORDER BY d.end %s
+            LIMIT %d, %d
+            ", array(
+                self::CUSTOM_POST_TYPE,
+                $date,
+                $post_status,
+                $sort,
+                $limit,
+                $offset
+            )
+        ));
+
+        return $results;
+    }
+
+    /**
+     * get_products_by_comments
+     * Get products ordered by user comments
+     * 
+     * @param  integer  $limit          Max number of products to be returned (10)
+     * @param  string   $sort           If the sorting should be ascending (ASC) or descending (DESC) (ASC)
+     * @param  string   $date           What date the post should be active between (NOW())
+     * @param  integer  $offset         Offset for the query (0)
+     * @param  string   $post_status    Requirements to the post_status (publish)
+     * 
+     * @return array()  Product (post) details
+     */
+    public static function get_products_by_comments($limit=10, $sort='ASC', $date='NOW()', $offset=0, $post_status='publish') {
+        global $wpdb;
+
+        $results = $wpdb->get_results($wpdb->prepare(
+            "
+            SELECT p.*
+            FROM $wpdb->posts p
+            INNER JOIN $wpdb->auction_dates d ON p.ID = d.post_id
+            WHERE p.post_type = %s AND %s BETWEEN d.start AND d.end AND p.post_status = %s
+            ORDER BY p.comment_count %s
+            LIMIT %d, %d
+            ", array(
+                self::CUSTOM_POST_TYPE,
+                $date,
+                $post_status,
+                $sort,
+                $limit,
+                $offset
+            )
+        ));
+
+        return $results;
+    }
+
+    /**
+     * ajax_get_regions
+     * Get regions for a selected country ($_POST['country_short_name']) 
+     * 
+     * @return void     echo json encoded response
+     */
     public function ajax_get_regions() {
         if (!isset($_POST['country_short_name'])) {
             echo "Missing guid";
@@ -896,6 +1109,12 @@ class Auction {
         die();
     }
 
+    /**
+     * load_admin_dependencies
+     * Loading admin dependencies used in the admin panel
+     * 
+     * @return void
+     */
     public function load_admin_dependencies() {
         wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.2/themes/smoothness/jquery-ui.css');
         wp_enqueue_style('auction-admin-styles', plugins_url( 'css/admin_styles.css' , __FILE__ ));

@@ -287,6 +287,12 @@ function save_custom_fields($post_id) {
     if ( !wp_verify_nonce( $_POST['address'], plugin_basename(__FILE__) ) )
         return $post_id;*/
 
+    $post_author_id = get_post_field( 'post_author', $post_id );
+
+    if (!current_user_can(Auction::EDIT_CAPABILITY) && $post_authod_id != get_current_user_id()) {
+        return false;
+    }
+
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
       return $post_id;
 
@@ -479,7 +485,7 @@ function address_box_content($post) {
                         data-city="<?php echo $user_city; ?>"
                         data-region="<?php echo $user_region; ?>"
                         data-country="<?php echo $user_country; ?>"
-                        value="user" <?php selected($user_address_id, $post_address); ?>>
+                        value="user" <?php selected($user_address_id == $post_address && $post->post_author == get_current_user_id(), true); ?>>
                             <?php _e('Use own address', Auction::DOMAIN); ?>
                 </option>
                 <?php foreach ($product_addresses as $address): ?>
@@ -490,7 +496,7 @@ function address_box_content($post) {
                         data-city="<?php echo $address->city; ?>"
                         data-region="<?php echo $address->region_id; ?>"
                         data-country="<?php echo $address->short_name; ?>"
-                        value="<?php echo $address->ID; ?>" <?php selected($post_address, $address->ID); ?>>
+                        value="<?php echo $address->ID; ?>" <?php selected($post_address == $address->ID && $post->post_author == get_current_user_id(), true); ?>>
                             <?php printf('%s: %s %s', $address->name, $address->street_name, $address->street_number); ?>
                     </option>
                         <?php
@@ -512,7 +518,7 @@ function address_box_content($post) {
                         data-city="<?php echo isset($_POST['city']) ? $_POST['city'] : ''; ?>"
                         data-region="<?php echo isset($_POST['region']) ? $_POST['region'] : ''; ?>"
                         data-country="<?php echo isset($_POST['country']) ? $_POST['country'] : ''; ?>"
-                        value="custom" <?php selected($set_region && !$is_new && $user_address_id == $post_address, true); ?>>
+                        value="custom" <?php selected($post->post_author != get_current_user_id() || ($set_region && !$is_new && $user_address_id != $post_address), true); ?>>
                             <?php _e('Enter new address..', Auction::DOMAIN); ?>
                 </option>
                 <?php 
